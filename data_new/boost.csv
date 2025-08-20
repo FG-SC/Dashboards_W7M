@@ -1,0 +1,20 @@
+ID,Price,Status,End Date,Partner ID,Description,Name,Con Figs,Cover Picture URL,Allow Points Purchase,Points,Points Multiplier
+2add3aba-7923-43f6-8ee2-699b4e299110,9.9,ACTIVE,2025-06-12,6a6b3b4f-3afa-43a9-946f-7e51f33738fe,Entre para o seleto grupo de quem vai liderar o game. Dobro de pontos de missão. Eventos exclusivos in game. Cargo de Fundador no Discord.,Passe Fundador Trexx Club,"{""discord"": {""roleName"": ""1387810588226359547""}}",https://trexx.s3.us-east-2.amazonaws.com/Passe+Fundador+Trexx+Club.png,false,,
+4fc92686-7e63-41f8-80f7-199c66269dba,0.0,ACTIVE,2025-12-31,d779a239-1a5c-48a5-8650-c374f4273f90,"Seja parte da Manada e aproveite benefícios únicos como Sócio W7M:
+Newsletter exclusiva, missões limitadas, resgates limitados, 6% de desconto na loja, 9% de desconto em watch parties e 1.0x denominador de pontos.",Sócio Chifre de Ferro - Mensal,"{""discord"": {""roleName"": ""Chifre de Ferro""}}",https://trexx.s3.us-east-2.amazonaws.com/Ferro.jpg,true,0,
+01146fd4-43f3-4814-b573-963ac0864017,29.9,ACTIVE,2025-06-12,63ad2dd1-8399-4619-b13b-9399ffa0455e,"Quem se pré-inscreveu na nossa lista de espera tem 24 horas de prioridade na compra.
+Benefícios exclusivos:
+10.000 Pontos adicionados à sua conta imediatamente ao adquirir o passe.
+Duração de 3 meses com vantagens exclusivas.
+Dobro de pontos nas missões durante a vigência do passe.
+Cargo especial ""300 da Tropa"" no Discord oficial da Imperial.
+Carteirinha digital de Sócio Torcedor Imperial.
+Acesso exclusivo a missões premium.",Passe dos 300 da Tropa,"{""discord"": {""roleName"": ""1387810588226359547""}}",https://trexx.s3.us-east-2.amazonaws.com/Passe+Imperial.png,false,,
+5ccbc285-40a3-4fcd-a4df-f7a73aaf3c2c,9.9,ACTIVE,2025-12-31,d779a239-1a5c-48a5-8650-c374f4273f90,"Seja parte da Manada e aproveite benefícios únicos como Sócio W7M:
+Newsletter exclusiva, acesso a todas as missões, resgates ilimitados, 9% de desconto na loja, 12% de desconto em watch parties, 1.1x denominador de pontos, sorteios de ingressos, acesso aos eventos BB, carteirinha digital e badge “Chifre de Prata” no Discord oficial da W7M.
+",Sócio Chifre de Prata - Mensal,"{""discord"": {""roleName"": ""Chifre de Prata""}}",https://trexx.s3.us-east-2.amazonaws.com/Prata.jpg,false,,1.1
+6cd36c22-ecd6-4128-b16d-a9bb8eec74b7,49.9,ACTIVE,2025-12-31,d779a239-1a5c-48a5-8650-c374f4273f90,"Seja parte da Manada e aproveite benefícios únicos como Sócio W7M:
+Newsletter exclusiva, acesso a todas as missões, resgates ilimitados, 12% de desconto na loja, 15% de desconto em watch parties, 1.2x denominador de pontos, sorteios de ingressos, acesso aos eventos BB, carteirinha digital, Close Friends e badge “Chifre de Ouro” no Discord oficial da W7M.
+",Sócio Chifre de Ouro - Mensal,"{""discord"": {""roleName"": ""Chifre de Ouro""}}",https://trexx.s3.us-east-2.amazonaws.com/Ouro.jpg,false,,1.2
+647d22df-7a22-46b6-ae3d-c7e2687417dd,99.9,ACTIVE,2025-12-31,d779a239-1a5c-48a5-8650-c374f4273f90,"Seja parte da Manada e aproveite benefícios únicos como Sócio W7M:
+Newsletter exclusiva, acesso a todas as missões, resgates ilimitados, 15% de desconto na loja, 20% de desconto em watch parties, 1.5x denominador de pontos, sorteios de ingressos, acesso aos eventos BB (manual), acesso ao camarote de sócio diamante com influenciadores, visita agendada sem gastar pontos (manual), corujão sem gastar pontos 1x por mês conforme disponibilidade (manual), carteirinha digital e física, Close Friends e badge “Chifre de Diamante” no Discord oficial da W7M.",Sócio Chifre de Diamante - Mensal,"{""discord"": {""roleName"": ""Chifre de Diamante""}}",https://trexx.s3.us-east-2.amazonaws.com/Dima.jpg,false,,1.5
