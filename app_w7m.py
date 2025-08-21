@@ -874,13 +874,13 @@ def criar_grafico_top5_valor_total_usuario(df_campanhas, df_rewards, df_boosts):
     """
     # Validação rigorosa de colunas obrigatórias
     if 'Username' not in df_campanhas.columns or 'Partner Points' not in df_campanhas.columns:
-        return None
+        return None, None
     
     if 'Username' not in df_rewards.columns or 'Points' not in df_rewards.columns:
-        return None
+        return None, None
     
     if 'Username' not in df_boosts.columns or 'Points' not in df_boosts.columns:
-        return None
+        return None, None
     
     # ==================== CÁLCULO DE PARTNER POINTS (MISSÕES) - LÓGICA CORRIGIDA ====================
     # PASSO 1: Isolar o score único de cada usuário com cada parceiro
@@ -913,7 +913,7 @@ def criar_grafico_top5_valor_total_usuario(df_campanhas, df_rewards, df_boosts):
     top_5_usernames = top_5_usuarios.index.tolist()
     
     if len(top_5_usernames) == 0:
-        return None
+        return None, None
     
     # ==================== PREPARAR DADOS PARA GRÁFICO EMPILHADO ====================
     # Criar DataFrames separados para cada componente dos top 5 usuários
@@ -927,7 +927,10 @@ def criar_grafico_top5_valor_total_usuario(df_campanhas, df_rewards, df_boosts):
     df_grafico['Valor Total'] = df_grafico['Partner Points'] + df_grafico['Reward Points'] + df_grafico['Boost Points']
     df_grafico = df_grafico.sort_values('Valor Total', ascending=False)
     
-    # Preparar dados para o gráfico de barras empilhadas
+    # ==================== INÍCIO DA CORREÇÃO OBRIGATÓRIA ====================
+    # Preparar dados para barras empilhadas de 3 níveis
+    # O 'melt' transforma o DataFrame de um formato largo para um longo,
+    # que é o formato que o plotly.express precisa para empilhar as barras.
     df_melted = pd.melt(
         df_grafico, 
         id_vars=['Username', 'Valor Total'], 
@@ -942,8 +945,8 @@ def criar_grafico_top5_valor_total_usuario(df_campanhas, df_rewards, df_boosts):
         df_melted,
         x='Username',
         y='Pontos',
-        color='Tipo de Pontos',
-        title='Top 5 Usuários por Valor Total (Missões + Recompensas + Boosts)',
+        color='Tipo de Pontos', # Isso cria o empilhamento
+        title='Top 5 Usuários W7M por Valor Total (Missões + Recompensas + Boosts)',
         labels={'Username': 'Usuário', 'Pontos': 'Pontos'},
         color_discrete_map={
             'Partner Points': '#1f77b4',   # Azul - Missões
@@ -951,6 +954,7 @@ def criar_grafico_top5_valor_total_usuario(df_campanhas, df_rewards, df_boosts):
             'Boost Points': '#2ca02c'      # Verde - Boosts
         }
     )
+    # ==================== FIM DA CORREÇÃO OBRIGATÓRIA ====================
     
     # Adicionar anotações com o valor total acima de cada barra
     for i, row in df_grafico.iterrows():
@@ -964,7 +968,7 @@ def criar_grafico_top5_valor_total_usuario(df_campanhas, df_rewards, df_boosts):
     
     fig.update_layout(height=500, title_x=0.5, xaxis_tickangle=-45)
     
-    return fig
+    return fig, df_grafico
 
 def criar_tabela_top_usuario(df_user, df_campanhas):
     """Cria tabela com informações do top usuário por Partner Points."""
@@ -1333,14 +1337,13 @@ def main():
         st.caption("Visão executiva do parceiro W7M")
         
         # KPIs Dinâmicos usando dados filtrados
-        parceiro_selecionado = 'W7M'
+        parceiro_selecionado='W7M'
         usuarios_engajados, partner_points, recompensas_resgatadas, novas_assinaturas, total_pontos = \
-            calcular_kpis_dashboard_geral(df_rewards_w7m, df_boosts_w7m, df_campanhas_w7m, df_product,
-                                          parceiro_selecionado)
+            calcular_kpis_dashboard_geral(df_rewards_w7m, df_boosts_w7m, df_campanhas_w7m, df_product,parceiro_selecionado)
         
         # Métricas de crescimento usando dados filtrados
-        crescimento_semanal, crescimento_mensal = calcular_crescimento_assinaturas(df_boosts_w7m, parceiro_selecionado)
-        crescimento_pontos = calcular_crescimento_pontos_semanal(df_campanhas_w7m, parceiro_selecionado)
+        crescimento_semanal, crescimento_mensal = calcular_crescimento_assinaturas(df_boosts_w7m,parceiro_selecionado)
+        crescimento_pontos = calcular_crescimento_pontos_semanal(df_campanhas_w7m,parceiro_selecionado)
         
         # KPIs para W7M
         col1, col2, col3, col4, col5 = st.columns(5)
@@ -1425,6 +1428,12 @@ def main():
             st.plotly_chart(fig_heatmap, use_container_width=True)
         else:
             st.info("Dados insuficientes para gerar heatmap de usuário-recompensa")
+        
+        # ADIÇÃO OBRIGATÓRIA: Visualização dos dados do Dashboard Geral W7M
+        st.markdown("---")
+        with st.expander("📊 Visualizar Dados de Campanhas W7M (Dashboard Geral)"):
+            st.subheader("Dados de Campanhas W7M")
+            st.dataframe(df_campanhas_w7m, use_container_width=True)
     
     # ==================== ANÁLISE DE USUÁRIO W7M ====================
     with tab_usuario:
@@ -1432,7 +1441,7 @@ def main():
         st.caption("Perfil e comportamento dos usuários do parceiro W7M")
         
         # Calcular usuários engajados usando dados W7M
-        usuarios_engajados_set = calcular_usuarios_engajados(df_rewards_w7m, df_boosts_w7m, df_campanhas_w7m, parceiro_selecionado)
+        usuarios_engajados_set = calcular_usuarios_engajados(df_rewards_w7m, df_boosts_w7m, df_campanhas_w7m,parceiro_selecionado)
         
         # Métricas de usuário W7M
         col1, col2, col3 = st.columns(3)
@@ -1468,8 +1477,8 @@ def main():
                 st.info("Dados demográficos não disponíveis para W7M")
         
         with col2:
-            # Gráfico Top 5 Usuários W7M com 3 componentes
-            fig_stacked = criar_grafico_top5_valor_total_usuario(df_campanhas_w7m, df_rewards_w7m, df_boosts_w7m)
+            # Gráfico Top 5 Usuários W7M com 3 componentes - FUNÇÃO CORRIGIDA
+            fig_stacked, df_top5_dados = criar_grafico_top5_valor_total_usuario(df_campanhas_w7m, df_rewards_w7m, df_boosts_w7m)
             if fig_stacked:
                 st.plotly_chart(fig_stacked, use_container_width=True)
             else:
@@ -1486,6 +1495,18 @@ def main():
                 st.dataframe(tabela_top, use_container_width=True, hide_index=True)
         else:
             st.info("Dados do top usuário não disponíveis para W7M")
+        
+        # ADIÇÃO OBRIGATÓRIA: Visualização dos dados do Top 5 Usuários
+        st.markdown("---")
+        with st.expander("📊 Visualizar Dados dos Top 5 Usuários W7M"):
+            if df_top5_dados is not None:
+                st.subheader("Composição do Valor Total por Usuário")
+                st.dataframe(df_top5_dados, use_container_width=True, hide_index=True)
+            else:
+                st.info("Dados do Top 5 não disponíveis")
+            
+            st.subheader("Dados Completos de Campanhas W7M")
+            st.dataframe(df_campanhas_w7m, use_container_width=True)
     
     # ==================== ANÁLISE DE REWARDS W7M ====================
     with tab_rewards:
@@ -1531,6 +1552,12 @@ def main():
                 st.plotly_chart(fig_unidades, use_container_width=True)
             else:
                 st.info("Dados de unidades não disponíveis para W7M")
+        
+        # ADIÇÃO OBRIGATÓRIA: Visualização dos dados de Rewards W7M
+        st.markdown("---")
+        with st.expander("📊 Visualizar Dados de Rewards W7M"):
+            st.subheader("Dados de Rewards W7M")
+            st.dataframe(df_rewards_w7m, use_container_width=True)
     
     # ==================== ANÁLISE DE BOOSTS W7M ====================
     with tab_boosts:
