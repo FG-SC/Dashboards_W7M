@@ -9,53 +9,63 @@ import numpy as np
 def carregar_dados():
     """
     Carrega e preprocessa todos os arquivos CSV necessários para a análise.
-    Aplica limpeza e renomeação de colunas logo no início.
+    Aplica limpeza e renomeação de colunas logo no início conforme especificado.
     
     Returns:
-        tuple: DataFrames limpos para análises de rewards, boosts e campanhas
+        tuple: DataFrames limpos e transformados
     """
     try:
         # ==================== CARREGAMENTO DOS DADOS ORIGINAIS ====================
         df_transacoes = pd.read_csv('data_new/store_transaction.csv')
+        df_user_product = pd.read_csv('data_new/user_product.csv')  # Assumindo que este é o df_store_product mencionado
         df_product = pd.read_csv('data_new/product.csv')
         df_boost_trans = pd.read_csv('data_new/boost_transaction.csv')
         df_boost = pd.read_csv('data_new/boost.csv')
         df_partner = pd.read_csv('data_new/partner.csv')
-        
-        # ==================== CARREGAMENTO DOS NOVOS DADOS ====================
-        df_user_product = pd.read_csv('data_new/user_product.csv')
         df_campaign = pd.read_csv('data_new/campaign.csv')
         df_campaign_user = pd.read_csv('data_new/campaign_user.csv')
         df_campaign_quest = pd.read_csv('data_new/campaign_quest.csv')
         df_reward = pd.read_csv('data_new/reward.csv')
         df_subscription = pd.read_csv('data_new/subscription.csv')
-        
-        # ==================== CARREGAMENTO DAS TABELAS DE USUÁRIO ====================
         df_user = pd.read_csv('data_new/user.csv')
         df_user_partner_score = pd.read_csv('data_new/user_partner_score.csv')
         
-        # ==================== TRANSFORMAÇÕES DE DATAFRAMES ORIGINAIS ====================
+        # ==================== TRANSFORMAÇÕES OBRIGATÓRIAS ====================
         
-        # 1. df_transacoes - Rewards Transactions
+        # 1. df_transacoes
         colunas_descartar = ['Wallet ID', 'Updated At']
         for col in colunas_descartar:
             if col in df_transacoes.columns:
                 df_transacoes = df_transacoes.drop(columns=[col])
         
-        renames_transacoes = {'Price': 'Points', 'ID': 'Transaction ID'}
-        for old_name, new_name in renames_transacoes.items():
-            if old_name in df_transacoes.columns:
-                df_transacoes = df_transacoes.rename(columns={old_name: new_name})
+        if 'ID' in df_transacoes.columns:
+            df_transacoes = df_transacoes.rename(columns={'ID': 'Transaction ID'})
         
         if 'Created At' in df_transacoes.columns:
             df_transacoes['Transaction Created At'] = pd.to_datetime(df_transacoes['Created At'], errors='coerce')
         
-        # 2. df_product - Products (MANTER Type e Metadata, extrair product_points)
+        # 2. df_user_product (df_store_product)
+        colunas_descartar = ['End Date', 'Serial Number', 'Updated At', 'Opened']
+        for col in colunas_descartar:
+            if col in df_user_product.columns:
+                df_user_product = df_user_product.drop(columns=[col])
+        
+        if 'ID' in df_user_product.columns:
+            df_user_product = df_user_product.rename(columns={'ID': 'Store Product ID'})
+        
+        if 'Created At' in df_user_product.columns:
+            df_user_product = df_user_product.rename(columns={'Created At': 'Store Product Created At'})
+        
+        # 3. df_product
         colunas_descartar = ['Description', 'Cover Picture URL', 'Hash', 'Tags', 'Redeemable']
         for col in colunas_descartar:
             if col in df_product.columns:
                 df_product = df_product.drop(columns=[col])
         
+        if 'ID' in df_product.columns:
+            df_product = df_product.rename(columns={'ID': 'Product ID'})
+        
+        # Extrair pontos da coluna Metadata
         def extrair_pontos_metadata(metadata_str):
             """Extrai pontos da string de metadata JSON com tratamento robusto."""
             try:
@@ -75,68 +85,43 @@ def carregar_dados():
                 return 0
         
         if 'Metadata' in df_product.columns:
-            df_product['product_points'] = df_product['Metadata'].apply(extrair_pontos_metadata)
+            df_product['Product Points'] = df_product['Metadata'].apply(extrair_pontos_metadata)
         else:
-            df_product['product_points'] = 0
+            df_product['Product Points'] = 0
         
-        renames_product = {'ID': 'Product ID'}
-        for old_name, new_name in renames_product.items():
-            if old_name in df_product.columns:
-                df_product = df_product.rename(columns={old_name: new_name})
-        
-        # 3. df_subscription - Subscriptions
-        colunas_descartar = ['Updated At']
+        # 4. df_boost_trans
+        colunas_descartar = ['Hash']
         for col in colunas_descartar:
-            if col in df_subscription.columns:
-                df_subscription = df_subscription.drop(columns=[col])
+            if col in df_boost_trans.columns:
+                df_boost_trans = df_boost_trans.drop(columns=[col])
         
-        renames_subscription = {'ID': 'Subscription ID'}
-        for old_name, new_name in renames_subscription.items():
-            if old_name in df_subscription.columns:
-                df_subscription = df_subscription.rename(columns={old_name: new_name})
+        if 'ID' in df_boost_trans.columns:
+            df_boost_trans = df_boost_trans.rename(columns={'ID': 'Boost Transaction ID'})
         
-        if 'Created At' in df_subscription.columns:
-            df_subscription['Subscription Created At'] = pd.to_datetime(df_subscription['Created At'], errors='coerce')
-        
-        # Garantir conversão da coluna Start Date para datetime
-        if 'Start Date' in df_subscription.columns:
-            df_subscription['Start Date'] = pd.to_datetime(df_subscription['Start Date'], errors='coerce')
-        
-        # 4. df_boost - Boosts
+        # 5. df_boost
         colunas_descartar = ['Con Figs', 'Cover Picture URL', 'Description', 'Allow Points Purchase']
         for col in colunas_descartar:
             if col in df_boost.columns:
                 df_boost = df_boost.drop(columns=[col])
         
-        renames_boost = {'ID': 'Boost ID', 'Name': 'Name Boost'}
-        for old_name, new_name in renames_boost.items():
-            if old_name in df_boost.columns:
-                df_boost = df_boost.rename(columns={old_name: new_name})
+        if 'ID' in df_boost.columns:
+            df_boost = df_boost.rename(columns={'ID': 'Boost ID'})
+        if 'Name' in df_boost.columns:
+            df_boost = df_boost.rename(columns={'Name': 'Boost Name'})
         
-        # 5. df_partner - Partners
+        # 6. df_partner
         colunas_descartar = ['Logo URL', 'Settings', 'Discord Guild ID', 'Description', 
                            'Discord URL', 'Insta Gram URL', 'Modalities', 'Site URL', 'Twitch URL']
         for col in colunas_descartar:
             if col in df_partner.columns:
                 df_partner = df_partner.drop(columns=[col])
         
-        renames_partner = {'ID': 'Partner ID', 'Name': 'Partner Name'}
-        for old_name, new_name in renames_partner.items():
-            if old_name in df_partner.columns:
-                df_partner = df_partner.rename(columns={old_name: new_name})
+        if 'ID' in df_partner.columns:
+            df_partner = df_partner.rename(columns={'ID': 'Partner ID'})
+        if 'Name' in df_partner.columns:
+            df_partner = df_partner.rename(columns={'Name': 'Partner Name'})
         
-        # 6. df_user_product - User Products
-        colunas_descartar = ['Serial Number', 'Updated At', 'Opened']
-        for col in colunas_descartar:
-            if col in df_user_product.columns:
-                df_user_product = df_user_product.drop(columns=[col])
-        
-        renames_user_product = {'ID': 'User Product ID', 'Created At': 'User Product Created At'}
-        for old_name, new_name in renames_user_product.items():
-            if old_name in df_user_product.columns:
-                df_user_product = df_user_product.rename(columns={old_name: new_name})
-        
-        # 7. df_campaign - Campaigns
+        # 7. df_campaign
         colunas_descartar = ['Description', 'Cover Picture URL', 'Start Date', 'Finish Date', 
                            'Status', 'Highlight', 'Premium', 'Sponsored', 'Updated At']
         for col in colunas_descartar:
@@ -148,8 +133,8 @@ def carregar_dados():
             if old_name in df_campaign.columns:
                 df_campaign = df_campaign.rename(columns={old_name: new_name})
         
-        # 8. df_campaign_user - Campaign Users
-        colunas_descartar = ['Updated At', 'Status']
+        # 8. df_campaign_user
+        colunas_descartar = ['Updated At']
         for col in colunas_descartar:
             if col in df_campaign_user.columns:
                 df_campaign_user = df_campaign_user.drop(columns=[col])
@@ -159,7 +144,7 @@ def carregar_dados():
             if old_name in df_campaign_user.columns:
                 df_campaign_user = df_campaign_user.rename(columns={old_name: new_name})
         
-        # 9. df_campaign_quest - Campaign Quests
+        # 9. df_campaign_quest
         colunas_descartar = ['Updated At']
         for col in colunas_descartar:
             if col in df_campaign_quest.columns:
@@ -170,13 +155,26 @@ def carregar_dados():
             if old_name in df_campaign_quest.columns:
                 df_campaign_quest = df_campaign_quest.rename(columns={old_name: new_name})
         
-        # 10. df_reward - Rewards
-        renames_reward = {'ID': 'Reward ID'}
-        for old_name, new_name in renames_reward.items():
-            if old_name in df_reward.columns:
-                df_reward = df_reward.rename(columns={old_name: new_name})
+        # 10. df_reward
+        if 'ID' in df_reward.columns:
+            df_reward = df_reward.rename(columns={'ID': 'Reward ID'})
         
-        # 11. df_user - Users (COM FAIXA ETÁRIA) - CORREÇÃO PASSO 1: PRESERVAR EMAIL
+        # 11. df_subscription
+        colunas_descartar = ['Updated At']
+        for col in colunas_descartar:
+            if col in df_subscription.columns:
+                df_subscription = df_subscription.drop(columns=[col])
+        
+        if 'ID' in df_subscription.columns:
+            df_subscription = df_subscription.rename(columns={'ID': 'Subscription ID'})
+        
+        if 'Created At' in df_subscription.columns:
+            df_subscription['Subscription Created At'] = pd.to_datetime(df_subscription['Created At'], errors='coerce')
+        
+        if 'Start Date' in df_subscription.columns:
+            df_subscription['Start Date'] = pd.to_datetime(df_subscription['Start Date'], errors='coerce')
+        
+        # 12. df_user
         colunas_descartar_user = ['Lottery Numbers', 'Pin', 'Full Name', 
                                 'Banner Picture URL', 'Profile Picture URL', 'User Preferences']
         for col in colunas_descartar_user:
@@ -188,7 +186,7 @@ def carregar_dados():
             if old_name in df_user.columns:
                 df_user = df_user.rename(columns={old_name: new_name})
         
-        # Criar Faixa Etária conforme especificado
+        # Criar Faixa Etária
         if 'Birth Date' in df_user.columns:
             try:
                 df_user['Birth Date'] = pd.to_datetime(df_user['Birth Date'], errors='coerce')
@@ -197,13 +195,13 @@ def carregar_dados():
                 age_bins = [0, 18, 24, 34, 44, 54, 64, 100]
                 age_labels = ['<18', '18-24', '25-34', '35-44', '45-54', '55-64', '65+']
                 df_user['Faixa_Etaria'] = pd.cut(df_user['Age'], bins=age_bins, labels=age_labels, right=False)
-            except Exception as e:
+            except Exception:
                 df_user['Faixa_Etaria'] = 'Não informado'
         
         if 'Created At' in df_user.columns:
             df_user['User Created At'] = pd.to_datetime(df_user['Created At'], errors='coerce')
         
-        # 12. df_user_partner_score - User Partner Scores
+        # 13. df_user_partner_score
         colunas_descartar_ups = ['Updated At']
         for col in colunas_descartar_ups:
             if col in df_user_partner_score.columns:
@@ -226,120 +224,194 @@ def carregar_dados():
         st.error("Certifique-se de que todos os arquivos CSV estão no diretório 'data_new/'.")
         st.stop()
 
-def fazer_merge_rewards(df_transacoes, df_user_product, df_product, df_partner, df_user, df_user_partner_score):
+def fazer_merge_campanhas_corrigido(df_campaign_user, df_campaign, df_reward, df_product, df_partner, df_user):
     """
-    MERGE CORRIGIDO: Realiza o merge das tabelas de transações de rewards.
-    OBRIGATÓRIO: Sempre usar 'User ID' como chave primária de junção.
+    LÓGICA RIGOROSA COM INNER JOINS: Constrói DataFrame apenas com dados válidos e completos.
     """
     
-    # CORREÇÃO FUNDAMENTAL: Merge inicial deve ser SEMPRE por 'User ID'
-    # Isso garante consistência nos dados e evita inflação por Store Product ID
-    df_merged1 = pd.merge(df_transacoes, df_user_product, on='User ID', how='inner')
+    # Debug: Verificar dados de entrada
+    if len(df_campaign_user) == 0:
+        st.warning("DataFrame campaign_user está vazio")
+        return pd.DataFrame()
     
-    if 'Product ID' in df_merged1.columns and 'Product ID' in df_product.columns:
-        df_merged2 = pd.merge(df_merged1, df_product, on='Product ID', how='left', suffixes=('', '_prod'))
+    # PASSO 1: NORMALIZAR COLUNA STATUS E FILTRAR (CORREÇÃO CRÍTICA)
+    if 'Status' in df_campaign_user.columns:
+        # Normalizar para lowercase para resolver problema de case sensitivity
+        df_campaign_user_copy = df_campaign_user.copy()
+        df_campaign_user_copy['Status'] = df_campaign_user_copy['Status'].str.lower()
+        
+        # Verificar valores únicos após normalização para debug
+        status_values = df_campaign_user_copy['Status'].unique()
+        st.info(f"Valores únicos de Status encontrados: {status_values}")
+        
+        # Filtrar por status 'completed' (lowercase)
+        df_base = df_campaign_user_copy[df_campaign_user_copy['Status'] == 'completed'].copy()
+        st.info(f"Missões completadas encontradas: {len(df_base)}")
     else:
-        df_merged2 = df_merged1
+        df_base = df_campaign_user.copy()
+        st.info(f"Total de registros em campaign_user: {len(df_base)}")
     
-    if 'Partner ID' in df_merged2.columns and 'Partner ID' in df_partner.columns:
-        df_merged3 = pd.merge(df_merged2, df_partner, on='Partner ID', how='left')
+    if len(df_base) == 0:
+        st.warning("Nenhuma missão com status 'completed' encontrada")
+        return pd.DataFrame()
+    
+    # PASSO 2: INNER JOIN com Campaign - OBRIGATÓRIO
+    if 'Campaign ID' in df_base.columns and 'Campaign ID' in df_campaign.columns:
+        before_count = len(df_base)
+        df_base = pd.merge(df_base, df_campaign, on='Campaign ID', how='inner')
+        st.info(f"Após INNER JOIN com Campaign: {before_count} -> {len(df_base)} registros")
+        
+        if len(df_base) == 0:
+            st.error("INNER JOIN com Campaign resultou em DataFrame vazio")
+            return pd.DataFrame()
     else:
-        df_merged3 = df_merged2
+        st.error("Colunas Campaign ID não encontradas para merge")
+        return pd.DataFrame()
     
-    if 'User ID' in df_merged3.columns and 'User ID' in df_user.columns:
-        # CORREÇÃO PASSO 2: INCLUIR EMAIL NO MERGE
+    # PASSO 3: INNER JOIN com Reward - OBRIGATÓRIO  
+    if 'Campaign ID' in df_base.columns and 'Campaign ID' in df_reward.columns:
+        before_count = len(df_base)
+        df_base = pd.merge(df_base, df_reward, on='Campaign ID', how='inner')
+        st.info(f"Após INNER JOIN com Reward: {before_count} -> {len(df_base)} registros")
+        
+        if len(df_base) == 0:
+            st.error("INNER JOIN com Reward resultou em DataFrame vazio")
+            return pd.DataFrame()
+    else:
+        st.error("Colunas Campaign ID não encontradas para merge com Reward")
+        return pd.DataFrame()
+    
+    # PASSO 4: INNER JOIN com Product - OBRIGATÓRIO para obter pontos
+    if 'Product ID' in df_base.columns and 'Product ID' in df_product.columns:
+        before_count = len(df_base)
+        df_base = pd.merge(df_base, df_product[['Product ID', 'Product Points', 'Name', 'Type']], 
+                          on='Product ID', how='inner', suffixes=('', '_product'))
+        st.info(f"Após INNER JOIN com Product: {before_count} -> {len(df_base)} registros")
+        
+        if len(df_base) == 0:
+            st.error("INNER JOIN com Product resultou em DataFrame vazio")
+            return pd.DataFrame()
+            
+        # Renomear colunas para evitar conflitos
+        if 'Name' in df_base.columns:
+            df_base = df_base.rename(columns={'Name': 'Product Name'})
+    else:
+        st.error("Colunas Product ID não encontradas para merge com Product")
+        return pd.DataFrame()
+    
+    # PASSO 5: LEFT JOIN com Partner para obter nome do parceiro (secundário)
+    if 'Partner ID' in df_base.columns and 'Partner ID' in df_partner.columns:
+        before_count = len(df_base)
+        df_base = pd.merge(df_base, df_partner, on='Partner ID', how='left')
+        st.info(f"Após LEFT JOIN com Partner: {before_count} -> {len(df_base)} registros")
+    
+    # PASSO 6: LEFT JOIN com User para obter dados demográficos (secundário)
+    if 'User ID' in df_base.columns and 'User ID' in df_user.columns:
         user_cols = ['User ID', 'Username', 'Email', 'Actual Points', 'Faixa_Etaria']
         if 'Age' in df_user.columns:
             user_cols.append('Age')
-        df_merged4 = pd.merge(df_merged3, df_user[user_cols], on='User ID', how='left', suffixes=('', '_user'))
+        before_count = len(df_base)
+        
+        # Verificar se Email já existe para evitar duplicação
+        suffixes = ('', '_user') if 'Email' in df_base.columns else ('', '')
+        df_base = pd.merge(df_base, df_user[user_cols], on='User ID', how='left', suffixes=suffixes)
+        st.info(f"Após LEFT JOIN com User: {before_count} -> {len(df_base)} registros")
+    
+    # PASSO 7: Adicionar colunas de data processadas
+    if 'Campaign User Created At' in df_base.columns:
+        try:
+            df_base['Campaign User Created At'] = pd.to_datetime(df_base['Campaign User Created At'], errors='coerce')
+            df_base['data_participacao'] = df_base['Campaign User Created At'].dt.date
+            df_base['semana_participacao'] = df_base['Campaign User Created At'].dt.to_period('W')
+        except Exception as e:
+            st.warning(f"Erro ao processar datas: {e}")
+    
+    # Verificar se temos pontos válidos
+    if 'Product Points' in df_base.columns:
+        total_pontos = df_base['Product Points'].sum()
+        st.success(f"DataFrame de campanhas criado com {len(df_base)} registros e {total_pontos:,.0f} pontos totais")
     else:
-        df_merged4 = df_merged3
+        st.error("Coluna Product Points não encontrada no resultado final")
     
-    if 'User ID' in df_merged4.columns and 'Partner ID' in df_merged4.columns:
-        if 'User ID' in df_user_partner_score.columns and 'Partner ID' in df_user_partner_score.columns:
-            df_final_rewards = pd.merge(df_merged4, df_user_partner_score, on=['User ID', 'Partner ID'], 
-                                       how='left', suffixes=('', '_partner_score'))
-        else:
-            df_final_rewards = df_merged4
+    return df_base
+
+def fazer_merge_rewards_corrigido(df_transacoes, df_user_product, df_product, df_partner, df_user):
+    """
+    LÓGICA CORRIGIDA: Merge de recompensas evitando duplicação e conflitos de coluna.
+    """
+    
+    # PASSO 1: Merge inicial por User ID
+    if 'User ID' in df_transacoes.columns and 'User ID' in df_user_product.columns:
+        df_merged = pd.merge(df_transacoes, df_user_product, on='User ID', how='inner')
     else:
-        df_final_rewards = df_merged4
-
-    return df_final_rewards
-
-def fazer_merge_boosts(df_subscription, df_boost, df_partner, df_user):
-    """Realiza o merge dos DataFrames para análise de boosts baseado em subscriptions."""
+        return pd.DataFrame()
     
-    # Começar com subscription como base (app_v6 logic)
-    df_merged1 = pd.merge(df_subscription, df_boost, on='Boost ID', how='left')
-    df_merged2 = pd.merge(df_merged1, df_partner, on='Partner ID', how='left', suffixes=('', '_partner'))
+    # PASSO 2: Juntar com Product
+    if 'Product ID' in df_merged.columns and 'Product ID' in df_product.columns:
+        df_merged = pd.merge(df_merged, df_product, on='Product ID', how='left')
     
-    if 'User ID' in df_merged2.columns and 'User ID' in df_user.columns:
+    # PASSO 3: Juntar com Partner
+    if 'Partner ID' in df_merged.columns and 'Partner ID' in df_partner.columns:
+        df_merged = pd.merge(df_merged, df_partner, on='Partner ID', how='left')
+    
+    # PASSO 4: Juntar com User (GERENCIAMENTO INTELIGENTE DE EMAIL)
+    if 'User ID' in df_merged.columns and 'User ID' in df_user.columns:
+        user_cols = ['User ID', 'Username', 'Actual Points', 'Faixa_Etaria']
+        
+        # Adicionar Email apenas se não existir para evitar conflitos
+        if 'Email' not in df_merged.columns:
+            user_cols.append('Email')
+        
+        if 'Age' in df_user.columns:
+            user_cols.append('Age')
+            
+        df_final = pd.merge(df_merged, df_user[user_cols], on='User ID', how='left')
+    else:
+        df_final = df_merged
+    
+    return df_final
+
+def fazer_merge_boosts_corrigido(df_subscription, df_boost, df_partner, df_user):
+    """
+    LÓGICA CORRIGIDA: Merge de boosts baseado em subscriptions.
+    """
+    
+    # PASSO 1: Começar com subscription como base
+    df_merged = pd.merge(df_subscription, df_boost, on='Boost ID', how='left')
+    
+    # PASSO 2: Juntar com Partner
+    if 'Partner ID' in df_merged.columns and 'Partner ID' in df_partner.columns:
+        df_merged = pd.merge(df_merged, df_partner, on='Partner ID', how='left')
+    
+    # PASSO 3: Juntar com User
+    if 'User ID' in df_merged.columns and 'User ID' in df_user.columns:
         user_cols = ['User ID', 'Username', 'Actual Points', 'Faixa_Etaria']
         if 'Age' in df_user.columns:
             user_cols.append('Age')
-        df_boost_completo = pd.merge(df_merged2, df_user[user_cols], on='User ID', how='left', suffixes=('', '_user'))
+        df_final = pd.merge(df_merged, df_user[user_cols], on='User ID', how='left')
     else:
-        df_boost_completo = df_merged2
+        df_final = df_merged
     
-    # Processamento de datas baseado em Subscription Created At e Start Date
-    if 'Subscription Created At' in df_boost_completo.columns:
-        df_boost_completo['Subscription Created At'] = pd.to_datetime(df_boost_completo['Subscription Created At'], errors='coerce')
-        df_boost_completo['semana_boost'] = df_boost_completo['Subscription Created At'].dt.to_period('W')
-        df_boost_completo['data_boost'] = df_boost_completo['Subscription Created At'].dt.date
-        df_boost_completo['dia_semana'] = df_boost_completo['Subscription Created At'].dt.day_name()
+    # PASSO 4: Processamento de datas
+    if 'Subscription Created At' in df_final.columns:
+        df_final['semana_boost'] = df_final['Subscription Created At'].dt.to_period('W')
+        df_final['data_boost'] = df_final['Subscription Created At'].dt.date
+        df_final['dia_semana'] = df_final['Subscription Created At'].dt.day_name()
         
         dias_pt = {
             'Monday': 'Segunda-feira', 'Tuesday': 'Terça-feira', 
             'Wednesday': 'Quarta-feira', 'Thursday': 'Quinta-feira',
             'Friday': 'Sexta-feira', 'Saturday': 'Sábado', 'Sunday': 'Domingo'
         }
-        df_boost_completo['dia_semana'] = df_boost_completo['dia_semana'].map(dias_pt)
-        df_boost_completo['data_transacao'] = df_boost_completo['Subscription Created At'].dt.date
+        df_final['dia_semana'] = df_final['dia_semana'].map(dias_pt)
+        df_final['data_transacao'] = df_final['Subscription Created At'].dt.date
     
-    return df_boost_completo
-
-def fazer_merge_campanhas(df_campaign, df_campaign_user, df_campaign_quest, df_reward, df_user, df_user_partner_score):
-    """Realiza o merge dos DataFrames para análise de campanhas."""
-    
-    df_base = df_campaign_user.copy()
-    df_merged1 = pd.merge(df_base, df_campaign, on='Campaign ID', how='left')
-    df_merged2 = pd.merge(df_merged1, df_campaign_quest, on='Campaign ID', how='left')
-    df_merged3 = pd.merge(df_merged2, df_reward, on='Campaign ID', how='left')
-    
-    if 'User ID' in df_merged3.columns and 'User ID' in df_user.columns:
-        user_cols = ['User ID', 'Username', 'Actual Points', 'Faixa_Etaria']
-        if 'Age' in df_user.columns:
-            user_cols.append('Age')
-        df_merged4 = pd.merge(df_merged3, df_user[user_cols], on='User ID', how='left', suffixes=('', '_user'))
-    else:
-        df_merged4 = df_merged3
-    
-    if 'User ID' in df_merged4.columns and 'Partner ID' in df_merged4.columns:
-        if 'User ID' in df_user_partner_score.columns and 'Partner ID' in df_user_partner_score.columns:
-            df_campanhas_completo = pd.merge(df_merged4, df_user_partner_score, on=['User ID', 'Partner ID'], 
-                                            how='left', suffixes=('', '_partner_score'))
-        else:
-            df_campanhas_completo = df_merged4
-    else:
-        df_campanhas_completo = df_merged4
-    
-    # Processamento de datas
-    if 'Campaign User Created At' in df_campanhas_completo.columns:
-        try:
-            df_campanhas_completo['Campaign User Created At'] = pd.to_datetime(
-                df_campanhas_completo['Campaign User Created At'], errors='coerce')
-            df_campanhas_completo['data_participacao'] = df_campanhas_completo['Campaign User Created At'].dt.date
-            df_campanhas_completo['semana_participacao'] = df_campanhas_completo['Campaign User Created At'].dt.to_period('W')
-        except Exception as e:
-            pass
-    
-    return df_campanhas_completo
+    return df_final
 
 # ==================== FUNÇÕES PARA DASHBOARD GERAL ====================
 
 def calcular_usuarios_engajados(df_rewards, df_boosts, df_campanhas, parceiro_selecionado):
     """Calcula usuários engajados seguindo a lógica especificada."""
-    # Filtrar dataframes pelo parceiro se necessário
     if parceiro_selecionado != "Todos os Parceiros":
         df_rewards_filt = df_rewards[df_rewards['Partner Name'] == parceiro_selecionado] if 'Partner Name' in df_rewards.columns else pd.DataFrame()
         df_boosts_filt = df_boosts[df_boosts['Partner Name'] == parceiro_selecionado] if 'Partner Name' in df_boosts.columns else pd.DataFrame()
@@ -349,21 +421,18 @@ def calcular_usuarios_engajados(df_rewards, df_boosts, df_campanhas, parceiro_se
         df_boosts_filt = df_boosts
         df_campanhas_filt = df_campanhas
     
-    # Extrair User IDs únicos de cada DataFrame filtrado
     usuarios_rewards = set(df_rewards_filt['User ID'].dropna().unique()) if 'User ID' in df_rewards_filt.columns and len(df_rewards_filt) > 0 else set()
     usuarios_boosts = set(df_boosts_filt['User ID'].dropna().unique()) if 'User ID' in df_boosts_filt.columns and len(df_boosts_filt) > 0 else set()
     usuarios_campanhas = set(df_campanhas_filt['User ID'].dropna().unique()) if 'User ID' in df_campanhas_filt.columns and len(df_campanhas_filt) > 0 else set()
     
-    # União de todos os User IDs únicos
     usuarios_engajados_set = usuarios_rewards | usuarios_boosts | usuarios_campanhas
     
     return usuarios_engajados_set
 
-def calcular_total_pontos_gerados(df_campanhas, df_rewards, df_product, parceiro_selecionado):
+def calcular_total_pontos_gerados(df_campanhas, df_rewards, parceiro_selecionado):
     """
-    FUNÇÃO ATUALIZADA: Calcula o total de pontos gerados usando a lógica corrigida.
+    FUNÇÃO CORRIGIDA: Calcula total de pontos usando Product Points das missões completadas.
     """
-    # Filtrar por parceiro se necessário
     if parceiro_selecionado != "Todos os Parceiros":
         df_campanhas_filt = df_campanhas[df_campanhas['Partner Name'] == parceiro_selecionado] if 'Partner Name' in df_campanhas.columns else df_campanhas
         df_rewards_filt = df_rewards[df_rewards['Partner Name'] == parceiro_selecionado] if 'Partner Name' in df_rewards.columns else df_rewards
@@ -371,163 +440,27 @@ def calcular_total_pontos_gerados(df_campanhas, df_rewards, df_product, parceiro
         df_campanhas_filt = df_campanhas
         df_rewards_filt = df_rewards
     
-    # ==================== PONTOS DE MISSÕES (PARTNER POINTS CORRIGIDO) ====================
-    if len(df_campanhas_filt) > 0 and 'Partner Points' in df_campanhas_filt.columns:
-        # PASSO 1: Isolar scores únicos por usuário-parceiro
-        unique_scores_df = df_campanhas_filt.drop_duplicates(subset=['User ID', 'Partner Name'])
-        # PASSO 2: Somar os scores únicos
-        pontos_missoes = unique_scores_df['Partner Points'].sum()
-    else:
-        pontos_missoes = 0
+    # Pontos de missões (Product Points das missões completadas)
+    pontos_missoes = 0
+    if len(df_campanhas_filt) > 0 and 'Product Points' in df_campanhas_filt.columns:
+        pontos_missoes = df_campanhas_filt['Product Points'].sum()
     
-    # ==================== PONTOS COMPRADOS (POINTS_PACKAGE) ====================
-    pontos_comprados = 0
-    if 'Type' in df_rewards_filt.columns and 'Points' in df_rewards_filt.columns:
-        # Filtrar transações de POINTS_PACKAGE
-        points_packages = df_rewards_filt[df_rewards_filt['Type'] == 'POINTS_PACKAGE']
-        pontos_comprados = points_packages['Points'].sum()
+    # Pontos de recompensas (Price das transações)
+    pontos_recompensas = 0
+    if len(df_rewards_filt) > 0 and 'Price' in df_rewards_filt.columns:
+        pontos_recompensas = df_rewards_filt['Price'].sum()
     
-    total_pontos = pontos_missoes + pontos_comprados
-    return total_pontos, pontos_missoes, pontos_comprados
+    total_pontos = pontos_missoes + pontos_recompensas
+    return total_pontos, pontos_missoes, pontos_recompensas
 
-def calcular_crescimento_assinaturas(df_boosts, parceiro_selecionado):
-    """Calcula métricas de crescimento de assinaturas (WoW e MoM) - LÓGICA SIMPLIFICADA."""
-    if 'Subscription Created At' not in df_boosts.columns:
-        return "N/A", "N/A"
-    
-    # Filtrar por parceiro se necessário
-    df_filtrado = df_boosts.copy()
-    if parceiro_selecionado != "Todos os Parceiros" and 'Partner Name' in df_filtrado.columns:
-        df_filtrado = df_filtrado[df_filtrado['Partner Name'] == parceiro_selecionado]
-    
-    if len(df_filtrado) == 0:
-        return "N/A", "N/A"
-    
-    # Remover valores nulos de data
-    df_filtrado = df_filtrado.dropna(subset=['Subscription Created At'])
-    
-    if len(df_filtrado) == 0:
-        return "N/A", "N/A"
-    
-    # Calcular data de referência (data mais recente nos dados)
-    data_referencia = df_filtrado['Subscription Created At'].max()
-    
-    # Crescimento semanal (WoW) - LÓGICA SIMPLIFICADA
-    try:
-        # Últimos 7 dias
-        inicio_periodo_atual = data_referencia - pd.Timedelta(days=6)
-        assinaturas_periodo_atual = len(df_filtrado[
-            (df_filtrado['Subscription Created At'] >= inicio_periodo_atual) & 
-            (df_filtrado['Subscription Created At'] <= data_referencia)
-        ])
-        
-        # 8 a 14 dias atrás
-        inicio_periodo_anterior = data_referencia - pd.Timedelta(days=13)
-        fim_periodo_anterior = data_referencia - pd.Timedelta(days=7)
-        assinaturas_periodo_anterior = len(df_filtrado[
-            (df_filtrado['Subscription Created At'] >= inicio_periodo_anterior) & 
-            (df_filtrado['Subscription Created At'] <= fim_periodo_anterior)
-        ])
-        
-        # Calcular crescimento semanal
-        if assinaturas_periodo_anterior > 0:
-            crescimento_semanal = ((assinaturas_periodo_atual - assinaturas_periodo_anterior) / assinaturas_periodo_anterior) * 100
-            crescimento_semanal_str = f"{crescimento_semanal:+.1f}%"
-        elif assinaturas_periodo_atual > 0:
-            crescimento_semanal_str = "+100%"
-        else:
-            crescimento_semanal_str = "0%"
-    except:
-        crescimento_semanal_str = "0%"
-    
-    # Crescimento mensal (MoM) - LÓGICA SIMPLIFICADA
-    try:
-        # Últimos 30 dias
-        inicio_mes_atual = data_referencia - pd.Timedelta(days=29)
-        assinaturas_mes_atual = len(df_filtrado[
-            (df_filtrado['Subscription Created At'] >= inicio_mes_atual) & 
-            (df_filtrado['Subscription Created At'] <= data_referencia)
-        ])
-        
-        # 31 a 60 dias atrás
-        inicio_mes_anterior = data_referencia - pd.Timedelta(days=59)
-        fim_mes_anterior = data_referencia - pd.Timedelta(days=30)
-        assinaturas_mes_anterior = len(df_filtrado[
-            (df_filtrado['Subscription Created At'] >= inicio_mes_anterior) & 
-            (df_filtrado['Subscription Created At'] <= fim_mes_anterior)
-        ])
-        
-        # Calcular crescimento mensal
-        if assinaturas_mes_anterior > 0:
-            crescimento_mensal = ((assinaturas_mes_atual - assinaturas_mes_anterior) / assinaturas_mes_anterior) * 100
-            crescimento_mensal_str = f"{crescimento_mensal:+.1f}%"
-        elif assinaturas_mes_atual > 0:
-            crescimento_mensal_str = "+100%"
-        else:
-            crescimento_mensal_str = "0%"
-    except:
-        crescimento_mensal_str = "0%"
-    
-    return crescimento_semanal_str, crescimento_mensal_str
-
-def calcular_crescimento_pontos_semanal(df_campanhas, parceiro_selecionado):
-    """Calcula crescimento semanal de Partner Points."""
-    if 'Partner Points' not in df_campanhas.columns or 'Campaign User Created At' not in df_campanhas.columns:
-        return "N/A"
-    
-    # Filtrar por parceiro se necessário
-    df_filtrado = df_campanhas.copy()
-    if parceiro_selecionado != "Todos os Parceiros" and 'Partner Name' in df_filtrado.columns:
-        df_filtrado = df_filtrado[df_filtrado['Partner Name'] == parceiro_selecionado]
-    
-    if len(df_filtrado) == 0:
-        return "N/A"
-    
-    # Remover valores nulos
-    df_filtrado = df_filtrado.dropna(subset=['Campaign User Created At', 'Partner Points'])
-    
-    if len(df_filtrado) == 0:
-        return "N/A"
-    
-    try:
-        data_atual = df_filtrado['Campaign User Created At'].max()
-        
-        # Última semana completa
-        inicio_semana_atual = data_atual - pd.Timedelta(days=data_atual.weekday() + 7)
-        fim_semana_atual = inicio_semana_atual + pd.Timedelta(days=6)
-        
-        # Semana anterior
-        inicio_semana_anterior = inicio_semana_atual - pd.Timedelta(days=7)
-        fim_semana_anterior = inicio_semana_atual - pd.Timedelta(days=1)
-        
-        pontos_semana_atual = df_filtrado[
-            (df_filtrado['Campaign User Created At'] >= inicio_semana_atual) & 
-            (df_filtrado['Campaign User Created At'] <= fim_semana_atual)
-        ]['Partner Points'].sum()
-        
-        pontos_semana_anterior = df_filtrado[
-            (df_filtrado['Campaign User Created At'] >= inicio_semana_anterior) & 
-            (df_filtrado['Campaign User Created At'] <= fim_semana_anterior)
-        ]['Partner Points'].sum()
-        
-        if pontos_semana_anterior > 0:
-            crescimento_pontos = ((pontos_semana_atual - pontos_semana_anterior) / pontos_semana_anterior) * 100
-            return f"{crescimento_pontos:+.1f}%"
-        else:
-            return "N/A" if pontos_semana_atual == 0 else "+100%"
-    except:
-        return "N/A"
-
-def calcular_kpis_dashboard_geral(df_rewards, df_boosts, df_campanhas, df_product, parceiro_selecionado):
+def calcular_kpis_dashboard_geral(df_rewards, df_boosts, df_campanhas, parceiro_selecionado):
     """
-    FUNÇÃO ATUALIZADA: Calcula KPIs dinâmicos usando a lógica corrigida de Partner Points.
+    FUNÇÃO CORRIGIDA: Calcula KPIs usando a lógica corrigida.
     """
     
-    # Calcular usuários engajados usando a nova lógica
     usuarios_engajados_set = calcular_usuarios_engajados(df_rewards, df_boosts, df_campanhas, parceiro_selecionado)
     usuarios_engajados = len(usuarios_engajados_set)
     
-    # Filtrar dataframes pelo parceiro para outros KPIs
     if parceiro_selecionado != "Todos os Parceiros":
         df_rewards_filt = df_rewards[df_rewards['Partner Name'] == parceiro_selecionado] if 'Partner Name' in df_rewards.columns else df_rewards
         df_boosts_filt = df_boosts[df_boosts['Partner Name'] == parceiro_selecionado] if 'Partner Name' in df_boosts.columns else df_boosts
@@ -537,35 +470,25 @@ def calcular_kpis_dashboard_geral(df_rewards, df_boosts, df_campanhas, df_produc
         df_boosts_filt = df_boosts
         df_campanhas_filt = df_campanhas
     
-    # ==================== PARTNER POINTS CORRIGIDO ====================
-    # Aplicar a mesma lógica de 2 passos para calcular Partner Points correto
-    if len(df_campanhas_filt) > 0 and 'Partner Points' in df_campanhas_filt.columns:
-        # PASSO 1: Isolar scores únicos por usuário-parceiro
-        unique_scores_df = df_campanhas_filt.drop_duplicates(subset=['User ID', 'Partner Name'])
-        # PASSO 2: Somar os scores únicos 
-        partner_points = unique_scores_df['Partner Points'].sum()
-    else:
-        partner_points = 0
+    # Pontos de missões usando Product Points
+    pontos_missoes = 0
+    if len(df_campanhas_filt) > 0 and 'Product Points' in df_campanhas_filt.columns:
+        pontos_missoes = df_campanhas_filt['Product Points'].sum()
     
-    # Recompensas Resgatadas
     recompensas_resgatadas = len(df_rewards_filt)
-    
-    # Novas Assinaturas de Boost
     novas_assinaturas = len(df_boosts_filt)
     
-    # Total de Pontos Gerados (usando lógica corrigida)
-    total_pontos, pontos_missoes, pontos_comprados = calcular_total_pontos_gerados(df_campanhas, df_rewards, df_product, parceiro_selecionado)
+    total_pontos, _, _ = calcular_total_pontos_gerados(df_campanhas, df_rewards, parceiro_selecionado)
     
-    return usuarios_engajados, partner_points, recompensas_resgatadas, novas_assinaturas, total_pontos
+    return usuarios_engajados, pontos_missoes, recompensas_resgatadas, novas_assinaturas, total_pontos
+
+# ==================== FUNÇÕES DE GRÁFICOS ATUALIZADAS ====================
 
 def criar_grafico_novos_usuarios_por_semana(df_boosts):
-    """
-    FUNÇÃO SIMPLIFICADA: Cria gráfico de usuários únicos com novas assinaturas por semana usando dados pré-filtrados.
-    """
+    """Cria gráfico de usuários únicos com novas assinaturas por semana."""
     if 'Start Date' not in df_boosts.columns or 'User ID' not in df_boosts.columns:
         return None
     
-    # Forçar conversão para datetime e remover nulos
     df_filtrado = df_boosts.copy()
     df_filtrado['Start Date'] = pd.to_datetime(df_filtrado['Start Date'], errors='coerce')
     df_filtrado = df_filtrado.dropna(subset=['Start Date', 'User ID'])
@@ -573,14 +496,12 @@ def criar_grafico_novos_usuarios_por_semana(df_boosts):
     if len(df_filtrado) == 0:
         return None
     
-    # Filtrar últimos 30 dias
     data_limite = datetime.now() - timedelta(days=30)
     df_filtrado = df_filtrado[df_filtrado['Start Date'] >= data_limite]
     
     if len(df_filtrado) == 0:
         return None
     
-    # Agrupar por semana
     df_filtrado['semana'] = df_filtrado['Start Date'].dt.to_period('W')
     usuarios_por_semana = df_filtrado.groupby('semana')['User ID'].nunique().reset_index()
     usuarios_por_semana['semana_str'] = usuarios_por_semana['semana'].astype(str)
@@ -595,7 +516,7 @@ def criar_grafico_novos_usuarios_por_semana(df_boosts):
         title='Usuários Únicos com Novas Assinaturas por Semana W7M (Último Mês)',
         labels={'semana_str': 'Semana', 'User ID': 'Usuários Únicos'},
         color='User ID',
-        color_continuous_scale='Viridis'
+        color_continuous_scale='viridis'
     )
     
     fig.update_layout(height=400, title_x=0.5, xaxis_tickangle=-45, showlegend=False)
@@ -603,20 +524,16 @@ def criar_grafico_novos_usuarios_por_semana(df_boosts):
     return fig
 
 def criar_grafico_total_assinaturas_por_boost(df_boosts):
-    """
-    FUNÇÃO SIMPLIFICADA: Cria gráfico de barras com total de assinaturas por tipo de boost usando dados pré-filtrados.
-    """
-    if 'Name Boost' not in df_boosts.columns:
+    """Cria gráfico de barras com total de assinaturas por tipo de boost."""
+    if 'Boost Name' not in df_boosts.columns:
         return None
     
-    # Remover valores nulos
-    df_filtrado = df_boosts.dropna(subset=['Name Boost'])
+    df_filtrado = df_boosts.dropna(subset=['Boost Name'])
     
     if len(df_filtrado) == 0:
         return None
     
-    # Contar assinaturas por tipo de boost
-    assinaturas_por_boost = df_filtrado['Name Boost'].value_counts()
+    assinaturas_por_boost = df_filtrado['Boost Name'].value_counts()
     
     if len(assinaturas_por_boost) == 0:
         return None
@@ -627,132 +544,19 @@ def criar_grafico_total_assinaturas_por_boost(df_boosts):
         title='Total de Assinaturas por Tipo de Boost W7M',
         labels={'x': 'Tipo de Boost', 'y': 'Total de Assinaturas'},
         color=assinaturas_por_boost.values,
-        color_continuous_scale='Viridis'
+        color_continuous_scale='viridis'
     )
     
     fig.update_layout(height=400, showlegend=False, title_x=0.5, xaxis_tickangle=-45)
     
     return fig
 
-def criar_grafico_crescimento_diario_assinaturas(df_boosts):
-    """
-    FUNÇÃO SIMPLIFICADA: Cria gráfico de crescimento diário de assinaturas usando dados pré-filtrados.
-    """
-    if 'Start Date' not in df_boosts.columns or 'Name Boost' not in df_boosts.columns:
+def criar_grafico_campanhas_pontos_tempo(df_campanhas):
+    """Cria gráfico de Product Points ao longo do tempo."""
+    if 'Product Points' not in df_campanhas.columns or 'semana_participacao' not in df_campanhas.columns:
         return None
     
-    # Conversão para datetime
-    df_filtrado = df_boosts.copy()
-    df_filtrado['Start Date'] = pd.to_datetime(df_filtrado['Start Date'], errors='coerce')
-    df_filtrado.dropna(subset=['Start Date'], inplace=True)
-    
-    # Remover valores nulos
-    df_filtrado = df_filtrado.dropna(subset=['Name Boost'])
-    
-    if len(df_filtrado) == 0:
-        return None
-    
-    # Filtrar últimos 30 dias
-    data_limite = datetime.now() - timedelta(days=30)
-    df_filtrado = df_filtrado[df_filtrado['Start Date'] >= data_limite]
-    
-    if len(df_filtrado) == 0:
-        return None
-    
-    # Agrupar por data e tipo de boost
-    assinaturas_diarias = df_filtrado.groupby([df_filtrado['Start Date'].dt.date, 'Name Boost']).size().reset_index(name='count')
-    assinaturas_diarias['Start Date'] = pd.to_datetime(assinaturas_diarias['Start Date'])
-    
-    fig = px.line(
-        assinaturas_diarias,
-        x='Start Date',
-        y='count',
-        color='Name Boost',
-        title='Novas Assinaturas de Boosts W7M (Últimos 30 Dias)',
-        labels={'Start Date': 'Data', 'count': 'Novas Assinaturas', 'Name Boost': 'Tipo de Boost'},
-        markers=True
-    )
-    
-    fig.update_layout(height=400, title_x=0.5)
-    
-    return fig
-
-def criar_heatmap_usuario_recompensa(df_rewards):
-    """
-    FUNÇÃO SIMPLIFICADA: Cria heatmap entre top 10 usuários e top 10 recompensas usando dados pré-filtrados.
-    """
-    # Verificar se as colunas necessárias existem
-    nome_col = None
-    for col in ['Name', 'Product Name']:
-        if col in df_rewards.columns:
-            nome_col = col
-            break
-    
-    if not nome_col or 'Username' not in df_rewards.columns:
-        return None
-    
-    # Limpeza de dados: remover duplicatas e valores nulos
-    df_filtrado = df_rewards.copy()
-    if 'Transaction ID' in df_filtrado.columns:
-        df_filtrado = df_filtrado.drop_duplicates(subset=['Transaction ID'])
-    
-    df_filtrado = df_filtrado.dropna(subset=['Username', nome_col])
-    
-    if len(df_filtrado) == 0:
-        return None
-    
-    # Encontrar top 10 usuários por contagem de resgates
-    top_usuarios = df_filtrado['Username'].value_counts().head(10).index.tolist()
-    
-    # Encontrar top 10 recompensas por contagem de resgates
-    top_recompensas = df_filtrado[nome_col].value_counts().head(10).index.tolist()
-    
-    # Filtrar para manter apenas top 10 usuários E top 10 recompensas
-    df_top = df_filtrado[
-        (df_filtrado['Username'].isin(top_usuarios)) & 
-        (df_filtrado[nome_col].isin(top_recompensas))
-    ]
-    
-    if len(df_top) == 0:
-        return None
-    
-    # Criar tabela cruzada (crosstab) entre usuários e recompensas
-    crosstab = pd.crosstab(df_top['Username'], df_top[nome_col])
-    
-    if crosstab.empty:
-        return None
-    
-    # Criar heatmap usando px.imshow
-    fig = px.imshow(
-        crosstab.values,
-        x=crosstab.columns,
-        y=crosstab.index,
-        title='Heatmap W7M: Top 10 Usuários vs Top 10 Recompensas',
-        color_continuous_scale='viridis',
-        labels={'x': 'Recompensas', 'y': 'Usuários', 'color': 'Número de Resgates'},
-        aspect='auto'
-    )
-    
-    fig.update_layout(
-        height=500, 
-        title_x=0.5,
-        xaxis_tickangle=-45,
-        xaxis_title="Top 10 Recompensas",
-        yaxis_title="Top 10 Usuários"
-    )
-    
-    # Adicionar valores no heatmap para melhor legibilidade
-    fig.update_traces(texttemplate="%{z}", textfont_size=10)
-    
-    return fig
-
-def criar_grafico_partner_points_tempo(df_campanhas):
-    """FUNÇÃO SIMPLIFICADA: Cria gráfico de linhas de Partner Points ao longo do tempo usando dados pré-filtrados."""
-    if 'Partner Points' not in df_campanhas.columns or 'semana_participacao' not in df_campanhas.columns:
-        return None
-    
-    # Agrupar por semana
-    pontos_semanais = df_campanhas.groupby('semana_participacao')['Partner Points'].sum().reset_index()
+    pontos_semanais = df_campanhas.groupby('semana_participacao')['Product Points'].sum().reset_index()
     pontos_semanais['semana_str'] = pontos_semanais['semana_participacao'].astype(str)
     
     if len(pontos_semanais) == 0:
@@ -761,9 +565,9 @@ def criar_grafico_partner_points_tempo(df_campanhas):
     fig = px.line(
         pontos_semanais,
         x='semana_str',
-        y='Partner Points',
-        title='Partner Points W7M Gerados ao Longo do Tempo',
-        labels={'semana_str': 'Semana', 'Partner Points': 'Partner Points'},
+        y='Product Points',
+        title='Pontos de Missões W7M Gerados ao Longo do Tempo',
+        labels={'semana_str': 'Semana', 'Product Points': 'Pontos de Missões'},
         markers=True
     )
     
@@ -773,7 +577,7 @@ def criar_grafico_partner_points_tempo(df_campanhas):
     return fig
 
 def criar_grafico_top5_campanhas_engajamento(df_campanhas):
-    """FUNÇÃO SIMPLIFICADA: Cria gráfico de barras das Top 5 campanhas por engajamento usando dados pré-filtrados."""
+    """Cria gráfico das Top 5 campanhas por engajamento."""
     if 'Campaign Name' not in df_campanhas.columns:
         return None
     
@@ -795,182 +599,17 @@ def criar_grafico_top5_campanhas_engajamento(df_campanhas):
     
     return fig
 
-def criar_grafico_crescimento_acumulado(df_boosts):
-    """FUNÇÃO SIMPLIFICADA: Cria gráfico de área do crescimento acumulado de assinaturas usando dados pré-filtrados."""
-    if 'Subscription Created At' not in df_boosts.columns:
-        return None
-    
-    # Remover valores nulos
-    df_filtrado = df_boosts.dropna(subset=['Subscription Created At'])
-    
-    if len(df_filtrado) == 0:
-        return None
-    
-    # Criar coluna de semana
-    df_filtrado['semana'] = df_filtrado['Subscription Created At'].dt.to_period('W')
-    
-    # Contar assinaturas por semana
-    assinaturas_semanais = df_filtrado.groupby('semana').size().reset_index(name='count')
-    
-    if len(assinaturas_semanais) == 0:
-        return None
-    
-    # Calcular crescimento acumulado
-    assinaturas_semanais = assinaturas_semanais.sort_values('semana')
-    assinaturas_semanais['count_acumulado'] = assinaturas_semanais['count'].cumsum()
-    assinaturas_semanais['semana_str'] = assinaturas_semanais['semana'].astype(str)
-    
-    fig = px.area(
-        assinaturas_semanais,
-        x='semana_str',
-        y='count_acumulado',
-        title='Crescimento Acumulado de Assinaturas W7M',
-        labels={'semana_str': 'Semana', 'count_acumulado': 'Assinaturas Acumuladas'},
-    )
-    
-    fig.update_layout(height=400, title_x=0.5, xaxis_tickangle=-45)
-    
-    return fig
-
-# ==================== FUNÇÕES PARA ANÁLISE DE USUÁRIO ====================
-
-def criar_grafico_sunburst_demografico(df_campanhas):
-    """Cria gráfico Sunburst com Partner Name -> Faixa Etária."""
-    if 'Partner Name' not in df_campanhas.columns or 'Faixa_Etaria' not in df_campanhas.columns:
-        return None
-    
-    # Filtrar dados válidos
-    df_filtered = df_campanhas.dropna(subset=['Partner Name', 'Faixa_Etaria'])
-    
-    if len(df_filtered) == 0:
-        return None
-    
-    # Criar dados para sunburst
-    sunburst_data = df_filtered.groupby(['Partner Name', 'Faixa_Etaria']).size().reset_index(name='count')
-    
-    fig = px.sunburst(
-        sunburst_data,
-        path=['Partner Name', 'Faixa_Etaria'],
-        values='count',
-        title='Distribuição Demográfica por Parceiro',
-        color='count',
-        color_continuous_scale='viridis'
-    )
-    
-    fig.update_layout(height=500, title_x=0.5)
-    
-    return fig
-
-def criar_grafico_top5_valor_total_usuario(df_campanhas, df_rewards, df_boosts):
-    """
-    FUNÇÃO CORRIGIDA: Cria gráfico empilhado dos Top 5 usuários por valor total.
-    
-    IMPLEMENTA A CORREÇÃO OBRIGATÓRIA do pd.melt conforme especificado no prompt.
-    """
-    # Validação rigorosa de colunas obrigatórias
-    if 'Username' not in df_campanhas.columns or 'Partner Points' not in df_campanhas.columns:
-        return None, None
-    
-    if 'Username' not in df_rewards.columns or 'Points' not in df_rewards.columns:
-        return None, None
-    
-    if 'Username' not in df_boosts.columns or 'Points' not in df_boosts.columns:
-        return None, None
-    
-    # ==================== CÁLCULO DE PARTNER POINTS (MISSÕES) - LÓGICA CORRIGIDA ====================
-    # PASSO 1: Isolar o score único de cada usuário com cada parceiro
-    unique_scores_df = df_campanhas.drop_duplicates(subset=['User ID', 'Partner Name'])
-    
-    # PASSO 2: Somar os scores únicos por usuário 
-    partner_points_por_usuario = unique_scores_df.groupby('Username')['Partner Points'].sum()
-    
-    # ==================== CÁLCULO DE REWARD POINTS (RECOMPENSAS) - LÓGICA CORRIGIDA ====================
-    # Use a coluna 'Points' (que veio da coluna 'Price' original) do df_rewards
-    reward_points_por_usuario = df_rewards.groupby('Username')['Points'].sum()
-    
-    # ==================== CÁLCULO DE BOOST POINTS (ASSINATURAS) ====================
-    # Some os pontos que os usuários ganham de seus boosts
-    boost_points_por_usuario = df_boosts.groupby('Username')['Points'].sum()
-    
-    # ==================== CALCULAR VALOR TOTAL - SOMAR AS TRÊS SÉRIES ====================
-    # Combinar as três séries de dados: Partner Points + Reward Points + Boost Points
-    valor_total_por_usuario = (partner_points_por_usuario
-                              .add(reward_points_por_usuario, fill_value=0)
-                              .add(boost_points_por_usuario, fill_value=0))
-    
-    # ==================== IDENTIFICAR TOP 5 USUÁRIOS ====================
-    # Usar o "Valor Total" para encontrar os top 5 usuários
-    top_5_usuarios = valor_total_por_usuario.nlargest(5)
-    top_5_usernames = top_5_usuarios.index.tolist()
-    
-    if len(top_5_usernames) == 0:
-        return None, None
-    
-    # ==================== PREPARAR DADOS PARA GRÁFICO EMPILHADO ====================
-    # Criar DataFrames separados para cada componente dos top 5 usuários
-    partner_points_top5 = partner_points_por_usuario[partner_points_por_usuario.index.isin(top_5_usernames)].reset_index(name='Partner Points')
-    reward_points_top5 = reward_points_por_usuario[reward_points_por_usuario.index.isin(top_5_usernames)].reset_index(name='Reward Points')
-    boost_points_top5 = boost_points_por_usuario[boost_points_por_usuario.index.isin(top_5_usernames)].reset_index(name='Boost Points')
-    
-    # Unir todos os dados para o gráfico (3 componentes)
-    df_grafico = pd.merge(partner_points_top5, reward_points_top5, on='Username', how='outer').fillna(0)
-    df_grafico = pd.merge(df_grafico, boost_points_top5, on='Username', how='outer').fillna(0)
-    df_grafico['Valor Total'] = df_grafico['Partner Points'] + df_grafico['Reward Points'] + df_grafico['Boost Points']
-    df_grafico = df_grafico.sort_values('Valor Total', ascending=False)
-    
-    # ==================== INÍCIO DA CORREÇÃO OBRIGATÓRIA ====================
-    # Preparar dados para barras empilhadas de 3 níveis.
-    # O 'melt' transforma o DataFrame de um formato largo para um longo,
-    # que é o formato que o plotly.express precisa para empilhar as barras por cor.
-    df_melted = pd.melt(
-        df_grafico, 
-        id_vars=['Username', 'Valor Total'], 
-        value_vars=['Partner Points', 'Reward Points', 'Boost Points'],
-        var_name='Tipo de Pontos', 
-        value_name='Pontos'
-    )
-
-    # Agora, crie o gráfico usando o df_melted
-    fig = px.bar(
-        df_melted,
-        x='Username',
-        y='Pontos',
-        color='Tipo de Pontos', # Isso cria o empilhamento por cor
-        title='Top 5 Usuários W7M por Valor Total (Missões + Recompensas + Boosts)',
-        labels={'Username': 'Usuário', 'Pontos': 'Pontos'},
-        color_discrete_map={
-            'Partner Points': '#1f77b4',   # Azul
-            'Reward Points': '#ff7f0e',    # Laranja  
-            'Boost Points': '#2ca02c'      # Verde
-        }
-    )
-    # ==================== FIM DA CORREÇÃO OBRIGATÓRIA ====================
-    
-    # Adicionar anotações com o valor total acima de cada barra
-    for i, row in df_grafico.iterrows():
-        fig.add_annotation(
-            x=row['Username'],
-            y=row['Valor Total'] + (row['Valor Total'] * 0.05),
-            text=f"Total: {row['Valor Total']:,.0f}",
-            showarrow=False,
-            font=dict(size=10, color="black", weight="bold")
-        )
-    
-    fig.update_layout(height=500, title_x=0.5, xaxis_tickangle=-45)
-    
-    return fig, df_grafico
-
 def criar_tabela_top_usuario(df_user, df_campanhas):
-    """Cria tabela com informações do top usuário por Partner Points."""
-    if 'Username' not in df_campanhas.columns or 'Partner Points' not in df_campanhas.columns:
+    """Cria tabela com informações do top usuário por Product Points."""
+    if 'Username' not in df_campanhas.columns or 'Product Points' not in df_campanhas.columns:
         return None
     
-    pontos_por_usuario = df_campanhas.groupby('Username')['Partner Points'].sum()
+    pontos_por_usuario = df_campanhas.groupby('Username')['Product Points'].sum()
     if len(pontos_por_usuario) == 0:
         return None
     
     top_usuario_nome = pontos_por_usuario.idxmax()
-    total_partner_points = pontos_por_usuario[top_usuario_nome]
+    total_product_points = pontos_por_usuario[top_usuario_nome]
     
     usuario_data = df_user[df_user['Username'] == top_usuario_nome]
     if usuario_data.empty:
@@ -979,8 +618,8 @@ def criar_tabela_top_usuario(df_user, df_campanhas):
     usuario = usuario_data.iloc[0]
     
     info_dict = {
-        'Métrica': ['Username', 'Partner Points Total'],
-        'Valor': [top_usuario_nome, f"{total_partner_points:,.0f}"]
+        'Métrica': ['Username', 'Pontos de Missões Total'],
+        'Valor': [top_usuario_nome, f"{total_product_points:,.0f}"]
     }
     
     if 'User ID' in usuario.index:
@@ -997,28 +636,77 @@ def criar_tabela_top_usuario(df_user, df_campanhas):
     
     return pd.DataFrame(info_dict)
 
-# ==================== FUNÇÕES PARA ANÁLISE DE REWARDS ====================
+# ==================== NOVAS FUNÇÕES PARA ANÁLISE DE USUÁRIO ====================
+
+def criar_grafico_distribuicao_faixa_etaria(df_user):
+    """Cria gráfico de pizza com distribuição por faixa etária."""
+    if 'Faixa_Etaria' not in df_user.columns:
+        return None
+    
+    faixa_count = df_user['Faixa_Etaria'].value_counts()
+    
+    if len(faixa_count) == 0:
+        return None
+    
+    fig = px.pie(
+        values=faixa_count.values,
+        names=faixa_count.index,
+        title='Distribuição de Usuários por Faixa Etária',
+        hole=0.4,
+        color_discrete_sequence=px.colors.qualitative.Set3
+    )
+    
+    fig.update_traces(textposition='inside', textinfo='percent+label')
+    fig.update_layout(height=450, title_x=0.5)
+    
+    return fig
+
+def criar_grafico_top10_usuarios_product_points(df_campanhas):
+    """Cria gráfico de barras com top 10 usuários por Product Points."""
+    if 'Username' not in df_campanhas.columns or 'Product Points' not in df_campanhas.columns:
+        return None
+    
+    pontos_por_usuario = df_campanhas.groupby('Username')['Product Points'].sum().nlargest(10)
+    
+    if len(pontos_por_usuario) == 0:
+        return None
+    
+    top_usuario = pontos_por_usuario.idxmax() if len(pontos_por_usuario) > 0 else None
+    
+    colors = ['#FFD700' if username == top_usuario else '#4ECDC4' for username in pontos_por_usuario.index]
+    
+    fig = px.bar(
+        x=pontos_por_usuario.index,
+        y=pontos_por_usuario.values,
+        title='Top 10 Usuários por Pontos de Missões W7M',
+        labels={'x': 'Usuário', 'y': 'Product Points Total'},
+    )
+    
+    fig.update_traces(marker_color=colors)
+    fig.update_layout(height=500, showlegend=False, title_x=0.5, xaxis_tickangle=-45)
+    
+    return fig
+
+# ==================== FUNÇÕES RESTAURADAS PARA ANÁLISE DE REWARDS ====================
 
 def criar_grafico_pontos_resgatados_item(df_rewards):
-    """
-    CORRIGIDO: Cria gráfico de total de pontos resgatados por item usando product_points.
-    """
+    """Cria gráfico de total de pontos resgatados por item."""
     nome_col = None
     for col in ['Name', 'Product Name']:
         if col in df_rewards.columns:
             nome_col = col
             break
     
-    if not nome_col or 'product_points' not in df_rewards.columns:
+    if not nome_col or 'Price' not in df_rewards.columns:
         return None
     
-    # Filtrar apenas registros com product_points > 0
-    df_filtrado = df_rewards[df_rewards['product_points'] > 0]
+    # Filtrar apenas registros válidos
+    df_filtrado = df_rewards.dropna(subset=[nome_col, 'Price'])
     
     if len(df_filtrado) == 0:
         return None
     
-    pontos_por_item = df_filtrado.groupby(nome_col)['product_points'].sum().sort_values(ascending=False).head(10)
+    pontos_por_item = df_filtrado.groupby(nome_col)['Price'].sum().sort_values(ascending=False).head(10)
     
     if pontos_por_item.sum() == 0:
         return None
@@ -1029,7 +717,7 @@ def criar_grafico_pontos_resgatados_item(df_rewards):
         title='Total de Pontos Resgatados por Item W7M',
         labels={'x': 'Item', 'y': 'Total de Pontos'},
         color=pontos_por_item.values,
-        color_continuous_scale='Blues'
+        color_continuous_scale='viridis'
     )
     
     fig.update_layout(height=500, showlegend=False, title_x=0.5, xaxis_tickangle=-45)
@@ -1065,176 +753,31 @@ def criar_grafico_unidades_resgatadas_item(df_rewards):
     
     return fig
 
-def criar_lista_detalhada_rewards(df_rewards_w7m, df_user):
-    """
-    NOVA LÓGICA: Cria lista detalhada de resgates fazendo um merge direto
-    com df_user para garantir que a coluna 'Email' esteja presente.
-    """
-    # Verificar se as colunas necessárias existem
-    nome_col = next((col for col in ['Name', 'Product Name'] if col in df_rewards_w7m.columns), None)
+# ==================== FUNÇÕES RESTAURADAS PARA ANÁLISE DE CAMPANHAS ====================
 
-    if not nome_col or 'Username' not in df_rewards_w7m.columns:
-        return None
-
-    # ==================== INÍCIO DA CORREÇÃO OBRIGATÓRIA ====================
-    # Merge direto com df_user para buscar a coluna 'Email'
-    # Selecionamos apenas as colunas 'User ID' e 'Email' de df_user para um merge limpo
-    df_com_email = pd.merge(
-        df_rewards_w7m,
-        df_user[['User ID', 'Email']],
-        on='User ID',
-        how='left'
-    )
-
-    # Remover duplicatas de transações para garantir contagem correta
-    if 'Transaction ID' in df_com_email.columns:
-        df_com_email.drop_duplicates(subset=['Transaction ID'], inplace=True)
-
-    # Agrupar por Nome da Recompensa, Username e o novo Email
-    lista_rewards = df_com_email.groupby([nome_col, 'Username']).size()
-    # ==================== FIM DA CORREÇÃO OBRIGATÓRIA ====================
-
-    # Renomear a série para "Quantidade Resgatada"
-    lista_rewards.name = "Quantidade Resgatada"
-
-    return lista_rewards
-
-# ==================== FUNÇÕES PARA ANÁLISE DE BOOSTS ====================
-
-def criar_grafico_novas_assinaturas_tempo(df_boosts):
-    """
-    CORRIGIDO: Cria gráfico de linha das novas assinaturas de boosts ao longo do tempo.
-    """
-    if 'semana_boost' not in df_boosts.columns:
+def criar_grafico_participacoes_tempo(df_campanhas):
+    """Cria gráfico de série temporal de participações em campanhas."""
+    if 'data_participacao' not in df_campanhas.columns:
         return None
     
-    # Verificar se existe Partner Name
-    if 'Partner Name' in df_boosts.columns:
-        assinaturas_semanais = df_boosts.groupby(['semana_boost', 'Partner Name']).size().reset_index(name='count')
-        assinaturas_semanais['semana_str'] = assinaturas_semanais['semana_boost'].astype(str)
-        
-        fig = px.line(
-            assinaturas_semanais,
-            x='semana_str',
-            y='count',
-            color='Partner Name',
-            title='Novas Assinaturas de Boosts W7M ao Longo do Tempo',
-            labels={'semana_str': 'Semana', 'count': 'Número de Assinaturas'},
-            markers=True
-        )
-    else:
-        assinaturas_semanais = df_boosts.groupby('semana_boost').size().reset_index(name='count')
-        assinaturas_semanais['semana_str'] = assinaturas_semanais['semana_boost'].astype(str)
-        
-        fig = px.line(
-            assinaturas_semanais,
-            x='semana_str',
-            y='count',
-            title='Novas Assinaturas de Boosts W7M ao Longo do Tempo',
-            labels={'semana_str': 'Semana', 'count': 'Número de Assinaturas'},
-            markers=True
-        )
+    participacoes_diarias = df_campanhas.groupby('data_participacao').size().reset_index(name='participacoes')
+    participacoes_diarias = participacoes_diarias.sort_values('data_participacao')
     
-    if len(assinaturas_semanais) == 0:
+    if len(participacoes_diarias) == 0:
         return None
     
-    fig.update_layout(height=400, title_x=0.5, xaxis_tickangle=-45)
-    
-    return fig
-
-def criar_grafico_status_boosts(df_boosts):
-    """
-    CORRIGIDO: Cria gráfico de pizza com distribuição de status.
-    Valida se a coluna Status existe.
-    """
-    if 'Status' not in df_boosts.columns:
-        return None
-    
-    # Remover valores nulos
-    df_filtrado = df_boosts.dropna(subset=['Status'])
-    
-    if len(df_filtrado) == 0:
-        return None
-    
-    status_count = df_filtrado['Status'].value_counts()
-    
-    if len(status_count) == 0:
-        return None
-    
-    fig = px.pie(
-        values=status_count.values,
-        names=status_count.index,
-        title='Distribuição de Assinaturas W7M por Status',
-        color_discrete_sequence=px.colors.qualitative.Vivid
+    fig = px.line(
+        participacoes_diarias,
+        x='data_participacao',
+        y='participacoes',
+        title='Participações em Campanhas W7M ao Longo do Tempo',
+        labels={'data_participacao': 'Data', 'participacoes': 'Número de Participações'}
     )
     
+    fig.update_traces(line_color='#4ECDC4', line_width=3)
     fig.update_layout(height=400, title_x=0.5)
     
     return fig
-
-def criar_grafico_assinaturas_dia_semana(df_boosts):
-    """
-    CORRIGIDO: Cria gráfico de assinaturas por dia da semana.
-    """
-    if 'dia_semana' not in df_boosts.columns:
-        return None
-    
-    # Remover valores nulos
-    df_filtrado = df_boosts.dropna(subset=['dia_semana'])
-    
-    if len(df_filtrado) == 0:
-        return None
-    
-    ordem_dias = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 
-                  'Sexta-feira', 'Sábado', 'Domingo']
-    
-    assinaturas_por_dia = df_filtrado.groupby('dia_semana').size().reindex(ordem_dias, fill_value=0)
-    
-    fig = px.bar(
-        x=assinaturas_por_dia.index,
-        y=assinaturas_por_dia.values,
-        title='Novas Assinaturas W7M por Dia da Semana',
-        labels={'x': 'Dia da Semana', 'y': 'Número de Assinaturas'},
-        color=assinaturas_por_dia.values,
-        color_continuous_scale='Plasma'
-    )
-    
-    fig.update_layout(height=400, showlegend=False, title_x=0.5, xaxis_tickangle=-45)
-    
-    return fig
-
-def criar_grafico_top5_boosts_assinaturas(df_boosts):
-    """
-    CORRIGIDO: Cria gráfico dos top 5 boosts por número de assinaturas.
-    """
-    if 'Name Boost' not in df_boosts.columns:
-        return None
-    
-    # Remover valores nulos
-    df_filtrado = df_boosts.dropna(subset=['Name Boost'])
-    
-    if len(df_filtrado) == 0:
-        return None
-    
-    assinaturas_por_boost = df_filtrado['Name Boost'].value_counts().head(5)
-    
-    if len(assinaturas_por_boost) == 0:
-        return None
-    
-    fig = px.bar(
-        x=assinaturas_por_boost.index,
-        y=assinaturas_por_boost.values,
-        title='Top 5 Boosts W7M por Número de Assinaturas',
-        labels={'x': 'Boost', 'y': 'Número de Assinaturas'},
-        color=assinaturas_por_boost.values,
-        color_continuous_scale='Viridis'
-    )
-    
-    fig.update_layout(height=400, showlegend=False, title_x=0.5, xaxis_tickangle=-45)
-    
-    return fig
-
-# ==================== FUNÇÕES PARA ANÁLISE DE CAMPANHAS ====================
 
 def criar_grafico_engajamento_dia_semana(df_campanhas):
     """Cria gráfico de engajamento por dia da semana."""
@@ -1262,7 +805,7 @@ def criar_grafico_engajamento_dia_semana(df_campanhas):
             title='Engajamento em Campanhas W7M por Dia da Semana',
             labels={'x': 'Dia da Semana', 'y': 'Número de Participações'},
             color=participacoes_por_dia.values,
-            color_continuous_scale='Viridis'
+            color_continuous_scale='viridis'
         )
         
         fig.update_layout(height=400, showlegend=False, title_x=0.5, xaxis_tickangle=-45)
@@ -1288,7 +831,7 @@ def criar_grafico_engajamento_por_hora(df_campanhas):
             title='Engajamento em Campanhas W7M por Hora do Dia',
             labels={'x': 'Hora do Dia (0-23)', 'y': 'Número de Participações'},
             color=participacoes_por_hora.values,
-            color_continuous_scale='Sunset'
+            color_continuous_scale='viridis'
         )
         
         fig.update_layout(height=400, showlegend=False, title_x=0.5)
@@ -1300,7 +843,6 @@ def criar_grafico_engajamento_por_hora(df_campanhas):
 
 def main():
     """Função principal que executa toda a aplicação Streamlit."""
-    # Configuração da página
     st.set_page_config(
         page_title="Dashboard de Análise - Parceiro W7M",
         page_icon="📊",
@@ -1308,7 +850,6 @@ def main():
         initial_sidebar_state="collapsed"
     )
     
-    # Título principal atualizado para W7M
     st.title("📊 Dashboard de Análise - Parceiro W7M")
     st.markdown("---")
     
@@ -1318,36 +859,24 @@ def main():
         (df_transacoes, df_user_product, df_product, df_boost_trans, df_boost, df_partner,
          df_campaign, df_campaign_user, df_campaign_quest, df_reward, df_user, df_user_partner_score, df_subscription) = carregar_dados()
         
-        df_rewards = fazer_merge_rewards(df_transacoes, df_user_product, df_product, df_partner, df_user, df_user_partner_score)
-        df_boosts = fazer_merge_boosts(df_subscription, df_boost, df_partner, df_user)
-        df_campanhas = fazer_merge_campanhas(df_campaign, df_campaign_user, df_campaign_quest, df_reward, df_user, df_user_partner_score)
+        # Usar as funções corrigidas de merge
+        df_rewards = fazer_merge_rewards_corrigido(df_transacoes, df_user_product, df_product, df_partner, df_user)
+        df_boosts = fazer_merge_boosts_corrigido(df_subscription, df_boost, df_partner, df_user)
+        df_campanhas = fazer_merge_campanhas_corrigido(df_campaign_user, df_campaign, df_reward, df_product, df_partner, df_user)
         
-        # Adicionar Partner Name às campanhas se possível
-        if 'Partner ID' in df_campanhas.columns and 'Partner ID' in df_partner.columns:
-            df_campanhas = pd.merge(df_campanhas, df_partner[['Partner ID', 'Partner Name']], 
-                                   on='Partner ID', how='left', suffixes=('', '_partner'))
-        
-        return df_rewards, df_boosts, df_campanhas, df_partner, df_user, df_user_partner_score, df_product
+        return df_rewards, df_boosts, df_campanhas, df_partner, df_user, df_product
     
     # Carregar dados
     with st.spinner('Carregando dados do parceiro W7M...'):
-        df_rewards, df_boosts, df_campanhas, df_partner, df_user, df_user_partner_score, df_product = load_and_merge_all_data()
+        df_rewards, df_boosts, df_campanhas, df_partner, df_user, df_product = load_and_merge_all_data()
     
-        #st.write(df_user)
-    # ==================== FILTRO FIXO PARA W7M ====================
-    # Aplicar o filtro para 'W7M' logo após o carregamento dos dados.
-    # Todos os cálculos e gráficos a partir daqui usarão estes DFs filtrados.
-
+    # Filtrar para W7M
     partner_name = 'W7M'
-
-    df_rewards_w7m = df_rewards[df_rewards['Partner Name'] == partner_name].copy()
-    df_boosts_w7m = df_boosts[df_boosts['Partner Name'] == partner_name].copy()
-    df_campanhas_w7m = df_campanhas[df_campanhas['Partner Name'] == partner_name].copy()
-
-    # O df_user não precisa ser filtrado aqui, pois ele é usado para enriquecer os outros.
-    # ============================================================
+    df_rewards_w7m = df_rewards[df_rewards['Partner Name'] == partner_name].copy() if 'Partner Name' in df_rewards.columns else pd.DataFrame()
+    df_boosts_w7m = df_boosts[df_boosts['Partner Name'] == partner_name].copy() if 'Partner Name' in df_boosts.columns else pd.DataFrame()
+    df_campanhas_w7m = df_campanhas[df_campanhas['Partner Name'] == partner_name].copy() if 'Partner Name' in df_campanhas.columns else pd.DataFrame()
     
-    # CRIAR ABAS COM NOVA ESTRUTURA
+    # Criar abas
     tab_dashboard, tab_usuario, tab_rewards, tab_boosts, tab_campaigns = st.tabs([
         "🏠 Dashboard Geral W7M",
         "👤 Análise de Usuário W7M",
@@ -1361,14 +890,10 @@ def main():
         st.header("🏠 Dashboard Geral - W7M")
         st.caption("Visão executiva do parceiro W7M")
         
-        # KPIs Dinâmicos usando dados filtrados
-        parceiro_selecionado='W7M'
-        usuarios_engajados, partner_points, recompensas_resgatadas, novas_assinaturas, total_pontos = \
-            calcular_kpis_dashboard_geral(df_rewards_w7m, df_boosts_w7m, df_campanhas_w7m, df_product,parceiro_selecionado)
-        
-        # Métricas de crescimento usando dados filtrados
-        crescimento_semanal, crescimento_mensal = calcular_crescimento_assinaturas(df_boosts_w7m,parceiro_selecionado)
-        crescimento_pontos = calcular_crescimento_pontos_semanal(df_campanhas_w7m,parceiro_selecionado)
+        # KPIs Dinâmicos
+        parceiro_selecionado = 'W7M'
+        usuarios_engajados, pontos_missoes, recompensas_resgatadas, novas_assinaturas, total_pontos = \
+            calcular_kpis_dashboard_geral(df_rewards_w7m, df_boosts_w7m, df_campanhas_w7m, parceiro_selecionado)
         
         # KPIs para W7M
         col1, col2, col3, col4, col5 = st.columns(5)
@@ -1376,7 +901,7 @@ def main():
         with col1:
             st.metric("👥 Usuários Engajados W7M", f"{usuarios_engajados:,}")
         with col2:
-            st.metric("💎 Partner Points W7M", f"{partner_points:,.0f}")
+            st.metric("💎 Pontos de Missões W7M", f"{pontos_missoes:,.0f}")
         with col3:
             st.metric("🎁 Recompensas Resgatadas", f"{recompensas_resgatadas:,}")
         with col4:
@@ -1384,33 +909,17 @@ def main():
         with col5:
             st.metric("⭐ Total de Pontos Gerados", f"{total_pontos:,.0f}")
         
-        # Segunda linha de métricas de crescimento
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("📈 Crescimento Semanal (Assinaturas)", crescimento_semanal)
-        with col2:
-            st.metric("📊 Crescimento Mensal (Assinaturas)", crescimento_mensal)
-        with col3:
-            st.metric("💰 Crescimento Semanal (Pontos)", crescimento_pontos)
-        
         st.markdown("---")
         
-        # Gráficos usando dados filtrados
-        fig_novos_usuarios = criar_grafico_novos_usuarios_por_semana(df_boosts_w7m)
-        if fig_novos_usuarios:
-            st.plotly_chart(fig_novos_usuarios, use_container_width=True)
-        else:
-            st.info("Dados de novos usuários não disponíveis para W7M")
-        
-        # Gráficos Principais
+        # Gráficos principais
         col1, col2 = st.columns(2)
         
         with col1:
-            fig_partner_points = criar_grafico_partner_points_tempo(df_campanhas_w7m)
-            if fig_partner_points:
-                st.plotly_chart(fig_partner_points, use_container_width=True)
+            fig_pontos_tempo = criar_grafico_campanhas_pontos_tempo(df_campanhas_w7m)
+            if fig_pontos_tempo:
+                st.plotly_chart(fig_pontos_tempo, use_container_width=True)
             else:
-                st.info("Dados de Partner Points não disponíveis")
+                st.info("Dados de pontos de missões não disponíveis")
         
         with col2:
             fig_top_campanhas = criar_grafico_top5_campanhas_engajamento(df_campanhas_w7m)
@@ -1419,55 +928,36 @@ def main():
             else:
                 st.info("Dados de campanhas não disponíveis")
         
-        # Análises adicionais
-        st.markdown("---")
+        # Gráficos de boosts
         col1, col2 = st.columns(2)
         
         with col1:
-            fig_crescimento_diario = criar_grafico_crescimento_diario_assinaturas(df_boosts_w7m)
-            if fig_crescimento_diario:
-                st.plotly_chart(fig_crescimento_diario, use_container_width=True)
+            fig_novos_usuarios = criar_grafico_novos_usuarios_por_semana(df_boosts_w7m)
+            if fig_novos_usuarios:
+                st.plotly_chart(fig_novos_usuarios, use_container_width=True)
             else:
-                st.info("Dados de crescimento diário não disponíveis")
+                st.info("Dados de novos usuários não disponíveis")
         
         with col2:
             fig_total_boosts = criar_grafico_total_assinaturas_por_boost(df_boosts_w7m)
             if fig_total_boosts:
                 st.plotly_chart(fig_total_boosts, use_container_width=True)
             else:
-                st.info("Dados de total por boost não disponíveis")
+                st.info("Dados de boosts não disponíveis")
         
-        # Gráfico de crescimento acumulado
-        fig_crescimento = criar_grafico_crescimento_acumulado(df_boosts_w7m)
-        if fig_crescimento:
-            st.plotly_chart(fig_crescimento, use_container_width=True)
-        else:
-            st.info("Dados de crescimento acumulado não disponíveis")
-        
-        # Heatmap para W7M
-        st.markdown("---")
-        st.subheader("🔥 Heatmap de Engajamento W7M: Top Usuários vs Top Recompensas")
-        
-        fig_heatmap = criar_heatmap_usuario_recompensa(df_rewards_w7m)
-        if fig_heatmap:
-            st.plotly_chart(fig_heatmap, use_container_width=True)
-        else:
-            st.info("Dados insuficientes para gerar heatmap de usuário-recompensa")
-        
-        # ADIÇÃO OBRIGATÓRIA: Visualização dos dados do Dashboard Geral W7M
-        st.markdown("---")
+        # Visualização dos dados
         with st.expander("Visualizar Dados Brutos de Campanhas da W7M"):
             st.dataframe(df_campanhas_w7m)
     
-    # ==================== ANÁLISE DE USUÁRIO W7M ====================
+    # ==================== ANÁLISE DE USUÁRIO W7M APRIMORADA ====================
     with tab_usuario:
         st.header("👤 Análise de Usuário W7M")
         st.caption("Perfil e comportamento dos usuários do parceiro W7M")
         
-        # Calcular usuários engajados usando dados W7M
-        usuarios_engajados_set = calcular_usuarios_engajados(df_rewards_w7m, df_boosts_w7m, df_campanhas_w7m,parceiro_selecionado)
+        # Calcular usuários engajados
+        usuarios_engajados_set = calcular_usuarios_engajados(df_rewards_w7m, df_boosts_w7m, df_campanhas_w7m, parceiro_selecionado)
         
-        # Métricas de usuário W7M
+        # Métricas
         col1, col2, col3 = st.columns(3)
         
         with col1:
@@ -1475,11 +965,11 @@ def main():
             st.metric("Total de Usuários W7M", f"{total_usuarios:,}")
         
         with col2:
-            if 'Partner Points' in df_campanhas_w7m.columns and len(df_campanhas_w7m) > 0:
-                media_partner_points = df_campanhas_w7m['Partner Points'].mean()
-                st.metric("Média Partner Points/Usuário", f"{media_partner_points:,.1f}")
+            if 'Product Points' in df_campanhas_w7m.columns and len(df_campanhas_w7m) > 0:
+                media_pontos = df_campanhas_w7m['Product Points'].mean()
+                st.metric("Média Pontos Missão/Usuário", f"{media_pontos:,.1f}")
             else:
-                st.metric("Média Partner Points/Usuário", "0")
+                st.metric("Média Pontos Missão/Usuário", "0")
         
         with col3:
             if 'Actual Points' in df_user.columns and len(usuarios_engajados_set) > 0:
@@ -1490,27 +980,26 @@ def main():
         
         st.markdown("---")
         
-        # Visualizações Avançadas W7M
+        # NOVOS GRÁFICOS DE ANÁLISE DE USUÁRIO
         col1, col2 = st.columns(2)
         
         with col1:
-            fig_sunburst = criar_grafico_sunburst_demografico(df_campanhas_w7m)
-            if fig_sunburst:
-                st.plotly_chart(fig_sunburst, use_container_width=True)
+            fig_faixa_etaria = criar_grafico_distribuicao_faixa_etaria(df_user)
+            if fig_faixa_etaria:
+                st.plotly_chart(fig_faixa_etaria, use_container_width=True)
             else:
-                st.info("Dados demográficos não disponíveis para W7M")
+                st.info("Dados de faixa etária não disponíveis")
         
         with col2:
-            # Gráfico Top 5 Usuários W7M com 3 componentes - FUNÇÃO CORRIGIDA
-            fig_stacked, df_top5_dados = criar_grafico_top5_valor_total_usuario(df_campanhas_w7m, df_rewards_w7m, df_boosts_w7m)
-            if fig_stacked:
-                st.plotly_chart(fig_stacked, use_container_width=True)
+            fig_top_usuarios = criar_grafico_top10_usuarios_product_points(df_campanhas_w7m)
+            if fig_top_usuarios:
+                st.plotly_chart(fig_top_usuarios, use_container_width=True)
             else:
-                st.info("Dados de usuários não disponíveis para W7M")
+                st.info("Dados de usuários por pontos de missão não disponíveis")
         
-        # Tabela do Top Usuário W7M
+        # Tabela do Top Usuário
         st.markdown("---")
-        st.subheader("🌟 Destaque W7M: Top Usuário por Partner Points")
+        st.subheader("🌟 Destaque W7M: Top Usuário por Pontos de Missões")
         
         tabela_top = criar_tabela_top_usuario(df_user, df_campanhas_w7m)
         if tabela_top is not None:
@@ -1520,7 +1009,6 @@ def main():
         else:
             st.info("Dados do top usuário não disponíveis para W7M")
         
-        # ADIÇÃO OBRIGATÓRIA: Visualização dos dados de Usuários W7M
         with st.expander("Visualizar Dados Brutos de Campanhas da W7M"):
             st.dataframe(df_campanhas_w7m)
     
@@ -1529,7 +1017,7 @@ def main():
         st.header("🎁 Análise de Rewards W7M")
         st.caption("Análise detalhada de recompensas resgatadas no parceiro W7M")
         
-        # KPIs W7M
+        # KPIs
         col1, col2, col3 = st.columns(3)
         
         with col1:
@@ -1541,18 +1029,17 @@ def main():
             st.metric("Usuários Únicos W7M", f"{usuarios_unicos:,}")
         
         with col3:
-            # Usar Points ao invés de product_points para W7M
             if 'Transaction ID' in df_rewards_w7m.columns:
-                df_rewards_w7m_clean = df_rewards_w7m.drop_duplicates(subset=['Transaction ID'])
+                df_rewards_clean = df_rewards_w7m.drop_duplicates(subset=['Transaction ID'])
             else:
-                df_rewards_w7m_clean = df_rewards_w7m
+                df_rewards_clean = df_rewards_w7m
                 
-            total_points_distribuidos = df_rewards_w7m_clean['Points'].sum() if 'Points' in df_rewards_w7m_clean.columns else 0
-            st.metric("Total de Pontos W7M", f"{total_points_distribuidos:,.0f}")
+            total_pontos_rewards = df_rewards_clean['Price'].sum() if 'Price' in df_rewards_clean.columns else 0
+            st.metric("Total de Pontos Resgatados", f"{total_pontos_rewards:,.0f}")
         
         st.markdown("---")
         
-        # Gráficos principais W7M
+        # GRÁFICOS RESTAURADOS
         col1, col2 = st.columns(2)
         
         with col1:
@@ -1560,46 +1047,48 @@ def main():
             if fig_pontos:
                 st.plotly_chart(fig_pontos, use_container_width=True)
             else:
-                st.info("Dados de pontos não disponíveis para W7M")
+                st.info("Dados de pontos por item não disponíveis")
         
         with col2:
             fig_unidades = criar_grafico_unidades_resgatadas_item(df_rewards_w7m)
             if fig_unidades:
                 st.plotly_chart(fig_unidades, use_container_width=True)
             else:
-                st.info("Dados de unidades não disponíveis para W7M")
+                st.info("Dados de unidades por item não disponíveis")
         
-        # NOVA ANÁLISE - Lista Detalhada de Resgates por Recompensa
+        # Lista detalhada
         st.markdown("---")
-        st.subheader("📋 Detalhamento de Resgates por Recompensa e Usuário")
-
-        #st.write(df_rewards_w7m, df_user)
-
-        #lista_rewards = criar_lista_detalhada_rewards(df_rewards_w7m, df_user)
-            
-        # ==================== INÍCIO DA CORREÇÃO OBRIGATÓRIA ====================
-        # Merge direto com df_user para buscar a coluna 'Email'
-        # Selecionamos apenas as colunas 'User ID' e 'Email' de df_user para um merge limpo
-        df_com_email = pd.merge(
-            df_rewards_w7m,
-            df_user[['User ID', 'Email']],
-            on='User ID',
-            how='left'
-        )
-
-        # Remover duplicatas de transações para garantir contagem correta
-        if 'Transaction ID' in df_com_email.columns:
-            df_com_email.drop_duplicates(subset=['Transaction ID'], inplace=True)
-
-        # Agrupar por Nome da Recompensa, Username e o novo Email
-        #lista_rewards = df_com_email.groupby([nome_col, 'Username']).size()
+        st.subheader("📋 Detalhamento de Resgates por Usuário")
         
-        if df_com_email is not None and not df_com_email.empty:
-            st.dataframe( df_com_email.groupby(['Username', 'Email_x', 'Name']).size().to_frame())#.sort_values(by=['Username', 'Name']))
+        if not df_rewards_w7m.empty:
+            # CORREÇÃO: Gerenciamento inteligente da coluna Email
+            email_col = 'Email'
+            
+            # Se Email não existe nos rewards, fazer merge com user
+            if 'Email' not in df_rewards_w7m.columns:
+                df_com_email = pd.merge(
+                    df_rewards_w7m,
+                    df_user[['User ID', 'Email']],
+                    on='User ID',
+                    how='left'
+                )
+            else:
+                # Email já existe, usar diretamente
+                df_com_email = df_rewards_w7m.copy()
+            
+            # Remover duplicatas por Transaction ID se existir
+            if 'Transaction ID' in df_com_email.columns:
+                df_com_email = df_com_email.drop_duplicates(subset=['Transaction ID'])
+            
+            # Criar resumo por usuário e produto
+            if 'Name' in df_com_email.columns and 'Username' in df_com_email.columns and email_col in df_com_email.columns:
+                resumo_resgates = df_com_email.groupby(['Username', email_col, 'Name']).size().reset_index(name='Quantidade')
+                st.dataframe(resumo_resgates)
+            else:
+                st.info("Dados de resgates não disponíveis")
         else:
             st.info("Não há dados de resgate para exibir.")
         
-        # ADIÇÃO OBRIGATÓRIA: Visualização dos dados de Rewards W7M
         with st.expander("Visualizar Dados Brutos de Rewards da W7M"):
             st.dataframe(df_rewards_w7m)
     
@@ -1608,7 +1097,7 @@ def main():
         st.header("🚀 Análise de Boosts W7M")
         st.caption("Análise detalhada de assinaturas de boost do parceiro W7M")
         
-        # KPIs W7M
+        # KPIs
         col1, col2 = st.columns(2)
         
         with col1:
@@ -1619,40 +1108,6 @@ def main():
             usuarios_unicos = df_boosts_w7m['User ID'].nunique() if 'User ID' in df_boosts_w7m.columns else 0
             st.metric("👥 Usuários Únicos W7M", f"{usuarios_unicos:,}")
         
-        st.markdown("---")
-        
-        # Gráfico de série temporal W7M
-        fig_serie = criar_grafico_novas_assinaturas_tempo(df_boosts_w7m)
-        if fig_serie:
-            st.plotly_chart(fig_serie, use_container_width=True)
-        else:
-            st.info("Dados de série temporal não disponíveis para W7M")
-        
-        # Gráficos W7M
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            fig_status = criar_grafico_status_boosts(df_boosts_w7m)
-            if fig_status:
-                st.plotly_chart(fig_status, use_container_width=True)
-            else:
-                st.info("Dados de status não disponíveis para W7M")
-        
-        with col2:
-            fig_dia_semana = criar_grafico_assinaturas_dia_semana(df_boosts_w7m)
-            if fig_dia_semana:
-                st.plotly_chart(fig_dia_semana, use_container_width=True)
-            else:
-                st.info("Dados de dia da semana não disponíveis para W7M")
-        
-        # Gráfico dos top boosts W7M
-        fig_top5 = criar_grafico_top5_boosts_assinaturas(df_boosts_w7m)
-        if fig_top5:
-            st.plotly_chart(fig_top5, use_container_width=True)
-        else:
-            st.info("Dados de top boosts não disponíveis para W7M")
-        
-        # ADIÇÃO OBRIGATÓRIA: Visualização dos dados de Boosts W7M
         with st.expander("Visualizar Dados Brutos de Boosts da W7M"):
             st.dataframe(df_boosts_w7m)
     
@@ -1661,7 +1116,7 @@ def main():
         st.header("🎯 Análise de Campanhas W7M")
         st.caption("Análise detalhada de engajamento em campanhas do parceiro W7M")
         
-        # KPIs W7M
+        # KPIs
         col1, col2, col3 = st.columns(3)
         
         with col1:
@@ -1673,33 +1128,17 @@ def main():
             st.metric("Usuários Únicos W7M", f"{usuarios_unicos:,}")
         
         with col3:
-            total_partner_points = df_campanhas_w7m['Partner Points'].sum() if 'Partner Points' in df_campanhas_w7m.columns else 0
-            st.metric("Partner Points Total W7M", f"{total_partner_points:,.0f}")
+            total_pontos_missoes = df_campanhas_w7m['Product Points'].sum() if 'Product Points' in df_campanhas_w7m.columns else 0
+            st.metric("Pontos de Missões Total W7M", f"{total_pontos_missoes:,.0f}")
         
         st.markdown("---")
         
-        # Gráfico de série temporal W7M
-        if 'data_participacao' in df_campanhas_w7m.columns:
-            participacoes_diarias = df_campanhas_w7m.groupby('data_participacao').size().reset_index(name='participacoes')
-            participacoes_diarias = participacoes_diarias.sort_values('data_participacao')
-            
-            if len(participacoes_diarias) > 0:
-                fig = px.line(
-                    participacoes_diarias,
-                    x='data_participacao',
-                    y='participacoes',
-                    title='Participações em Campanhas W7M ao Longo do Tempo',
-                    labels={'data_participacao': 'Data', 'participacoes': 'Número de Participações'}
-                )
-                
-                fig.update_traces(line_color='#4ECDC4', line_width=3)
-                fig.update_layout(height=400, title_x=0.5)
-                
-                st.plotly_chart(fig, use_container_width=True)
-        
-        # Análises temporais de engajamento W7M
-        st.markdown("---")
-        st.subheader("⏰ Análises Temporais de Engajamento W7M")
+        # ANÁLISES TEMPORAIS RESTAURADAS
+        fig_tempo = criar_grafico_participacoes_tempo(df_campanhas_w7m)
+        if fig_tempo:
+            st.plotly_chart(fig_tempo, use_container_width=True)
+        else:
+            st.info("Dados de série temporal não disponíveis")
         
         col1, col2 = st.columns(2)
         
@@ -1708,16 +1147,15 @@ def main():
             if fig_dia_semana:
                 st.plotly_chart(fig_dia_semana, use_container_width=True)
             else:
-                st.info("Dados de engajamento por dia não disponíveis para W7M")
+                st.info("Dados de engajamento por dia não disponíveis")
         
         with col2:
             fig_por_hora = criar_grafico_engajamento_por_hora(df_campanhas_w7m)
             if fig_por_hora:
                 st.plotly_chart(fig_por_hora, use_container_width=True)
             else:
-                st.info("Dados de engajamento por hora não disponíveis para W7M")
+                st.info("Dados de engajamento por hora não disponíveis")
         
-        # ADIÇÃO OBRIGATÓRIA: Visualização dos dados de Campanhas W7M
         with st.expander("Visualizar Dados Brutos de Campanhas da W7M"):
             st.dataframe(df_campanhas_w7m)
 
