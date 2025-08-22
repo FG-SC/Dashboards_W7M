@@ -176,8 +176,8 @@ def carregar_dados():
             if old_name in df_reward.columns:
                 df_reward = df_reward.rename(columns={old_name: new_name})
         
-        # 11. df_user - Users (COM FAIXA ETÁRIA)
-        colunas_descartar_user = ['Email', 'Lottery Numbers', 'Pin', 'Full Name', 
+        # 11. df_user - Users (COM FAIXA ETÁRIA) - CORREÇÃO PASSO 1: PRESERVAR EMAIL
+        colunas_descartar_user = ['Lottery Numbers', 'Pin', 'Full Name', 
                                 'Banner Picture URL', 'Profile Picture URL', 'User Preferences']
         for col in colunas_descartar_user:
             if col in df_user.columns:
@@ -247,7 +247,8 @@ def fazer_merge_rewards(df_transacoes, df_user_product, df_product, df_partner, 
         df_merged3 = df_merged2
     
     if 'User ID' in df_merged3.columns and 'User ID' in df_user.columns:
-        user_cols = ['User ID', 'Username', 'Actual Points', 'Faixa_Etaria']
+        # CORREÇÃO PASSO 2: INCLUIR EMAIL NO MERGE
+        user_cols = ['User ID', 'Username', 'Email', 'Actual Points', 'Faixa_Etaria']
         if 'Age' in df_user.columns:
             user_cols.append('Age')
         df_merged4 = pd.merge(df_merged3, df_user[user_cols], on='User ID', how='left', suffixes=('', '_user'))
@@ -862,15 +863,9 @@ def criar_grafico_sunburst_demografico(df_campanhas):
 
 def criar_grafico_top5_valor_total_usuario(df_campanhas, df_rewards, df_boosts):
     """
-    LÓGICA DEFINITIVA E FINAL: Calcula "Valor Total" com 3 componentes usando processo exato especificado.
+    FUNÇÃO CORRIGIDA: Cria gráfico empilhado dos Top 5 usuários por valor total.
     
-    PROCESSO DE CÁLCULO OBRIGATÓRIO (na ordem exata):
-    1. Partner Points (Missões) - Lógica de 2 passos para evitar duplicatas
-    2. Reward Points (Recompensas) - Coluna 'Points' (ex-Price) 
-    3. Boost Points (Assinaturas) - Coluna 'Points'
-    
-    EXEMPLO: Se usuário tem Partner Points: 36.819 + Reward Points: 25.000 + Boost Points: 8.500
-    = Valor Total: 70.319
+    IMPLEMENTA A CORREÇÃO OBRIGATÓRIA do pd.melt conforme especificado no prompt.
     """
     # Validação rigorosa de colunas obrigatórias
     if 'Username' not in df_campanhas.columns or 'Partner Points' not in df_campanhas.columns:
@@ -884,17 +879,13 @@ def criar_grafico_top5_valor_total_usuario(df_campanhas, df_rewards, df_boosts):
     
     # ==================== CÁLCULO DE PARTNER POINTS (MISSÕES) - LÓGICA CORRIGIDA ====================
     # PASSO 1: Isolar o score único de cada usuário com cada parceiro
-    # Filtra para ter apenas uma entrada por usuário-parceiro, preservando o score único.
     unique_scores_df = df_campanhas.drop_duplicates(subset=['User ID', 'Partner Name'])
     
     # PASSO 2: Somar os scores únicos por usuário 
-    # Agrupa por Username e SOMA os Partner Points. Isso irá somar os scores de um usuário 
-    # através de todos os parceiros com quem ele interagiu.
     partner_points_por_usuario = unique_scores_df.groupby('Username')['Partner Points'].sum()
     
     # ==================== CÁLCULO DE REWARD POINTS (RECOMPENSAS) - LÓGICA CORRIGIDA ====================
-    # ATENÇÃO: Use a coluna 'Points' (que veio da coluna 'Price' original) do df_rewards
-    # NÃO use 'product_points' - use 'Points'
+    # Use a coluna 'Points' (que veio da coluna 'Price' original) do df_rewards
     reward_points_por_usuario = df_rewards.groupby('Username')['Points'].sum()
     
     # ==================== CÁLCULO DE BOOST POINTS (ASSINATURAS) ====================
@@ -928,9 +919,9 @@ def criar_grafico_top5_valor_total_usuario(df_campanhas, df_rewards, df_boosts):
     df_grafico = df_grafico.sort_values('Valor Total', ascending=False)
     
     # ==================== INÍCIO DA CORREÇÃO OBRIGATÓRIA ====================
-    # Preparar dados para barras empilhadas de 3 níveis
+    # Preparar dados para barras empilhadas de 3 níveis.
     # O 'melt' transforma o DataFrame de um formato largo para um longo,
-    # que é o formato que o plotly.express precisa para empilhar as barras.
+    # que é o formato que o plotly.express precisa para empilhar as barras por cor.
     df_melted = pd.melt(
         df_grafico, 
         id_vars=['Username', 'Valor Total'], 
@@ -938,20 +929,19 @@ def criar_grafico_top5_valor_total_usuario(df_campanhas, df_rewards, df_boosts):
         var_name='Tipo de Pontos', 
         value_name='Pontos'
     )
-    
-    # ==================== GRÁFICO DE BARRAS EMPILHADAS DE 3 NÍVEIS ====================
-    # O gráfico deve ser empilhado, mostrando as três componentes
+
+    # Agora, crie o gráfico usando o df_melted
     fig = px.bar(
         df_melted,
         x='Username',
         y='Pontos',
-        color='Tipo de Pontos', # Isso cria o empilhamento
+        color='Tipo de Pontos', # Isso cria o empilhamento por cor
         title='Top 5 Usuários W7M por Valor Total (Missões + Recompensas + Boosts)',
         labels={'Username': 'Usuário', 'Pontos': 'Pontos'},
         color_discrete_map={
-            'Partner Points': '#1f77b4',   # Azul - Missões
-            'Reward Points': '#ff7f0e',    # Laranja - Recompensas  
-            'Boost Points': '#2ca02c'      # Verde - Boosts
+            'Partner Points': '#1f77b4',   # Azul
+            'Reward Points': '#ff7f0e',    # Laranja  
+            'Boost Points': '#2ca02c'      # Verde
         }
     )
     # ==================== FIM DA CORREÇÃO OBRIGATÓRIA ====================
@@ -1036,7 +1026,7 @@ def criar_grafico_pontos_resgatados_item(df_rewards):
     fig = px.bar(
         x=pontos_por_item.index,
         y=pontos_por_item.values,
-        title='Total de Pontos Resgatados por Item',
+        title='Total de Pontos Resgatados por Item W7M',
         labels={'x': 'Item', 'y': 'Total de Pontos'},
         color=pontos_por_item.values,
         color_continuous_scale='Blues'
@@ -1065,7 +1055,7 @@ def criar_grafico_unidades_resgatadas_item(df_rewards):
     fig = px.bar(
         x=unidades_por_item.index,
         y=unidades_por_item.values,
-        title='Total de Unidades Resgatadas por Item',
+        title='Total de Unidades Resgatadas por Item W7M',
         labels={'x': 'Item', 'y': 'Quantidade Resgatada'},
         color=unidades_por_item.values,
         color_continuous_scale='viridis'
@@ -1074,6 +1064,40 @@ def criar_grafico_unidades_resgatadas_item(df_rewards):
     fig.update_layout(height=500, showlegend=False, title_x=0.5, xaxis_tickangle=-45)
     
     return fig
+
+def criar_lista_detalhada_rewards(df_rewards_w7m, df_user):
+    """
+    NOVA LÓGICA: Cria lista detalhada de resgates fazendo um merge direto
+    com df_user para garantir que a coluna 'Email' esteja presente.
+    """
+    # Verificar se as colunas necessárias existem
+    nome_col = next((col for col in ['Name', 'Product Name'] if col in df_rewards_w7m.columns), None)
+
+    if not nome_col or 'Username' not in df_rewards_w7m.columns:
+        return None
+
+    # ==================== INÍCIO DA CORREÇÃO OBRIGATÓRIA ====================
+    # Merge direto com df_user para buscar a coluna 'Email'
+    # Selecionamos apenas as colunas 'User ID' e 'Email' de df_user para um merge limpo
+    df_com_email = pd.merge(
+        df_rewards_w7m,
+        df_user[['User ID', 'Email']],
+        on='User ID',
+        how='left'
+    )
+
+    # Remover duplicatas de transações para garantir contagem correta
+    if 'Transaction ID' in df_com_email.columns:
+        df_com_email.drop_duplicates(subset=['Transaction ID'], inplace=True)
+
+    # Agrupar por Nome da Recompensa, Username e o novo Email
+    lista_rewards = df_com_email.groupby([nome_col, 'Username']).size()
+    # ==================== FIM DA CORREÇÃO OBRIGATÓRIA ====================
+
+    # Renomear a série para "Quantidade Resgatada"
+    lista_rewards.name = "Quantidade Resgatada"
+
+    return lista_rewards
 
 # ==================== FUNÇÕES PARA ANÁLISE DE BOOSTS ====================
 
@@ -1094,7 +1118,7 @@ def criar_grafico_novas_assinaturas_tempo(df_boosts):
             x='semana_str',
             y='count',
             color='Partner Name',
-            title='Novas Assinaturas de Boosts ao Longo do Tempo',
+            title='Novas Assinaturas de Boosts W7M ao Longo do Tempo',
             labels={'semana_str': 'Semana', 'count': 'Número de Assinaturas'},
             markers=True
         )
@@ -1106,7 +1130,7 @@ def criar_grafico_novas_assinaturas_tempo(df_boosts):
             assinaturas_semanais,
             x='semana_str',
             y='count',
-            title='Novas Assinaturas de Boosts ao Longo do Tempo',
+            title='Novas Assinaturas de Boosts W7M ao Longo do Tempo',
             labels={'semana_str': 'Semana', 'count': 'Número de Assinaturas'},
             markers=True
         )
@@ -1140,7 +1164,7 @@ def criar_grafico_status_boosts(df_boosts):
     fig = px.pie(
         values=status_count.values,
         names=status_count.index,
-        title='Distribuição de Assinaturas por Status',
+        title='Distribuição de Assinaturas W7M por Status',
         color_discrete_sequence=px.colors.qualitative.Vivid
     )
     
@@ -1169,7 +1193,7 @@ def criar_grafico_assinaturas_dia_semana(df_boosts):
     fig = px.bar(
         x=assinaturas_por_dia.index,
         y=assinaturas_por_dia.values,
-        title='Novas Assinaturas por Dia da Semana',
+        title='Novas Assinaturas W7M por Dia da Semana',
         labels={'x': 'Dia da Semana', 'y': 'Número de Assinaturas'},
         color=assinaturas_por_dia.values,
         color_continuous_scale='Plasma'
@@ -1200,7 +1224,7 @@ def criar_grafico_top5_boosts_assinaturas(df_boosts):
     fig = px.bar(
         x=assinaturas_por_boost.index,
         y=assinaturas_por_boost.values,
-        title='Top 5 Boosts por Número de Assinaturas',
+        title='Top 5 Boosts W7M por Número de Assinaturas',
         labels={'x': 'Boost', 'y': 'Número de Assinaturas'},
         color=assinaturas_por_boost.values,
         color_continuous_scale='Viridis'
@@ -1235,7 +1259,7 @@ def criar_grafico_engajamento_dia_semana(df_campanhas):
         fig = px.bar(
             x=participacoes_por_dia.index,
             y=participacoes_por_dia.values,
-            title='Engajamento em Campanhas por Dia da Semana',
+            title='Engajamento em Campanhas W7M por Dia da Semana',
             labels={'x': 'Dia da Semana', 'y': 'Número de Participações'},
             color=participacoes_por_dia.values,
             color_continuous_scale='Viridis'
@@ -1261,7 +1285,7 @@ def criar_grafico_engajamento_por_hora(df_campanhas):
         fig = px.bar(
             x=participacoes_por_hora.index,
             y=participacoes_por_hora.values,
-            title='Engajamento em Campanhas por Hora do Dia',
+            title='Engajamento em Campanhas W7M por Hora do Dia',
             labels={'x': 'Hora do Dia (0-23)', 'y': 'Número de Participações'},
             color=participacoes_por_hora.values,
             color_continuous_scale='Sunset'
@@ -1309,6 +1333,7 @@ def main():
     with st.spinner('Carregando dados do parceiro W7M...'):
         df_rewards, df_boosts, df_campanhas, df_partner, df_user, df_user_partner_score, df_product = load_and_merge_all_data()
     
+        #st.write(df_user)
     # ==================== FILTRO FIXO PARA W7M ====================
     # Aplicar o filtro para 'W7M' logo após o carregamento dos dados.
     # Todos os cálculos e gráficos a partir daqui usarão estes DFs filtrados.
@@ -1431,9 +1456,8 @@ def main():
         
         # ADIÇÃO OBRIGATÓRIA: Visualização dos dados do Dashboard Geral W7M
         st.markdown("---")
-        with st.expander("📊 Visualizar Dados de Campanhas W7M (Dashboard Geral)"):
-            st.subheader("Dados de Campanhas W7M")
-            st.dataframe(df_campanhas_w7m, use_container_width=True)
+        with st.expander("Visualizar Dados Brutos de Campanhas da W7M"):
+            st.dataframe(df_campanhas_w7m)
     
     # ==================== ANÁLISE DE USUÁRIO W7M ====================
     with tab_usuario:
@@ -1496,17 +1520,9 @@ def main():
         else:
             st.info("Dados do top usuário não disponíveis para W7M")
         
-        # ADIÇÃO OBRIGATÓRIA: Visualização dos dados do Top 5 Usuários
-        st.markdown("---")
-        with st.expander("📊 Visualizar Dados dos Top 5 Usuários W7M"):
-            if df_top5_dados is not None:
-                st.subheader("Composição do Valor Total por Usuário")
-                st.dataframe(df_top5_dados, use_container_width=True, hide_index=True)
-            else:
-                st.info("Dados do Top 5 não disponíveis")
-            
-            st.subheader("Dados Completos de Campanhas W7M")
-            st.dataframe(df_campanhas_w7m, use_container_width=True)
+        # ADIÇÃO OBRIGATÓRIA: Visualização dos dados de Usuários W7M
+        with st.expander("Visualizar Dados Brutos de Campanhas da W7M"):
+            st.dataframe(df_campanhas_w7m)
     
     # ==================== ANÁLISE DE REWARDS W7M ====================
     with tab_rewards:
@@ -1553,11 +1569,39 @@ def main():
             else:
                 st.info("Dados de unidades não disponíveis para W7M")
         
-        # ADIÇÃO OBRIGATÓRIA: Visualização dos dados de Rewards W7M
+        # NOVA ANÁLISE - Lista Detalhada de Resgates por Recompensa
         st.markdown("---")
-        with st.expander("📊 Visualizar Dados de Rewards W7M"):
-            st.subheader("Dados de Rewards W7M")
-            st.dataframe(df_rewards_w7m, use_container_width=True)
+        st.subheader("📋 Detalhamento de Resgates por Recompensa e Usuário")
+
+        #st.write(df_rewards_w7m, df_user)
+
+        #lista_rewards = criar_lista_detalhada_rewards(df_rewards_w7m, df_user)
+            
+        # ==================== INÍCIO DA CORREÇÃO OBRIGATÓRIA ====================
+        # Merge direto com df_user para buscar a coluna 'Email'
+        # Selecionamos apenas as colunas 'User ID' e 'Email' de df_user para um merge limpo
+        df_com_email = pd.merge(
+            df_rewards_w7m,
+            df_user[['User ID', 'Email']],
+            on='User ID',
+            how='left'
+        )
+
+        # Remover duplicatas de transações para garantir contagem correta
+        if 'Transaction ID' in df_com_email.columns:
+            df_com_email.drop_duplicates(subset=['Transaction ID'], inplace=True)
+
+        # Agrupar por Nome da Recompensa, Username e o novo Email
+        #lista_rewards = df_com_email.groupby([nome_col, 'Username']).size()
+        
+        if df_com_email is not None and not df_com_email.empty:
+            st.dataframe( df_com_email.groupby(['Username', 'Email_x', 'Name']).size().to_frame())#.sort_values(by=['Username', 'Name']))
+        else:
+            st.info("Não há dados de resgate para exibir.")
+        
+        # ADIÇÃO OBRIGATÓRIA: Visualização dos dados de Rewards W7M
+        with st.expander("Visualizar Dados Brutos de Rewards da W7M"):
+            st.dataframe(df_rewards_w7m)
     
     # ==================== ANÁLISE DE BOOSTS W7M ====================
     with tab_boosts:
@@ -1607,6 +1651,10 @@ def main():
             st.plotly_chart(fig_top5, use_container_width=True)
         else:
             st.info("Dados de top boosts não disponíveis para W7M")
+        
+        # ADIÇÃO OBRIGATÓRIA: Visualização dos dados de Boosts W7M
+        with st.expander("Visualizar Dados Brutos de Boosts da W7M"):
+            st.dataframe(df_boosts_w7m)
     
     # ==================== ANÁLISE DE CAMPANHAS W7M ====================
     with tab_campaigns:
@@ -1668,6 +1716,10 @@ def main():
                 st.plotly_chart(fig_por_hora, use_container_width=True)
             else:
                 st.info("Dados de engajamento por hora não disponíveis para W7M")
+        
+        # ADIÇÃO OBRIGATÓRIA: Visualização dos dados de Campanhas W7M
+        with st.expander("Visualizar Dados Brutos de Campanhas da W7M"):
+            st.dataframe(df_campanhas_w7m)
 
 if __name__ == "__main__":
     main()
