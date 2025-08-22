@@ -242,14 +242,14 @@ def fazer_merge_campanhas_corrigido(df_campaign_user, df_campaign, df_reward, df
         
         # Verificar valores únicos após normalização para debug
         status_values = df_campaign_user_copy['Status'].unique()
-        st.info(f"Valores únicos de Status encontrados: {status_values}")
+        #st.info(f"Valores únicos de Status encontrados: {status_values}")
         
         # Filtrar por status 'completed' (lowercase)
         df_base = df_campaign_user_copy[df_campaign_user_copy['Status'] == 'completed'].copy()
-        st.info(f"Missões completadas encontradas: {len(df_base)}")
+        #st.info(f"Missões completadas encontradas: {len(df_base)}")
     else:
         df_base = df_campaign_user.copy()
-        st.info(f"Total de registros em campaign_user: {len(df_base)}")
+        #st.info(f"Total de registros em campaign_user: {len(df_base)}")
     
     if len(df_base) == 0:
         st.warning("Nenhuma missão com status 'completed' encontrada")
@@ -259,7 +259,7 @@ def fazer_merge_campanhas_corrigido(df_campaign_user, df_campaign, df_reward, df
     if 'Campaign ID' in df_base.columns and 'Campaign ID' in df_campaign.columns:
         before_count = len(df_base)
         df_base = pd.merge(df_base, df_campaign, on='Campaign ID', how='inner')
-        st.info(f"Após INNER JOIN com Campaign: {before_count} -> {len(df_base)} registros")
+        #st.info(f"Após INNER JOIN com Campaign: {before_count} -> {len(df_base)} registros")
         
         if len(df_base) == 0:
             st.error("INNER JOIN com Campaign resultou em DataFrame vazio")
@@ -272,7 +272,7 @@ def fazer_merge_campanhas_corrigido(df_campaign_user, df_campaign, df_reward, df
     if 'Campaign ID' in df_base.columns and 'Campaign ID' in df_reward.columns:
         before_count = len(df_base)
         df_base = pd.merge(df_base, df_reward, on='Campaign ID', how='inner')
-        st.info(f"Após INNER JOIN com Reward: {before_count} -> {len(df_base)} registros")
+        #st.info(f"Após INNER JOIN com Reward: {before_count} -> {len(df_base)} registros")
         
         if len(df_base) == 0:
             st.error("INNER JOIN com Reward resultou em DataFrame vazio")
@@ -286,7 +286,7 @@ def fazer_merge_campanhas_corrigido(df_campaign_user, df_campaign, df_reward, df
         before_count = len(df_base)
         df_base = pd.merge(df_base, df_product[['Product ID', 'Product Points', 'Name', 'Type']], 
                           on='Product ID', how='inner', suffixes=('', '_product'))
-        st.info(f"Após INNER JOIN com Product: {before_count} -> {len(df_base)} registros")
+        #st.info(f"Após INNER JOIN com Product: {before_count} -> {len(df_base)} registros")
         
         if len(df_base) == 0:
             st.error("INNER JOIN com Product resultou em DataFrame vazio")
@@ -1161,4 +1161,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
