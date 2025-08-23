@@ -1070,10 +1070,12 @@ def main():
             else:
                 # Email já existe, usar diretamente
                 df_com_email = df_rewards_w7m.copy()
+                
             st.write('df_com_email', df_com_email)
+            
             # Remover duplicatas por Transaction ID se existir
             if 'Transaction ID' in df_com_email.columns:
-                df_com_email = df_com_email.drop_duplicates(subset=['Transaction ID', 'Created At'])
+                df_com_email = df_com_email.drop_duplicates(subset=['Store Product ID_y'])
             
             # Criar resumo por usuário e produto
             st.write('df_com_email 2', df_com_email)
@@ -1157,6 +1159,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
