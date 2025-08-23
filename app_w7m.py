@@ -272,7 +272,6 @@ def fazer_merge_campanhas_corrigido(df_campaign_user, df_campaign, df_reward, df
     if 'Campaign ID' in df_base.columns and 'Campaign ID' in df_reward.columns:
         before_count = len(df_base)
         df_base = pd.merge(df_base, df_reward, on='Campaign ID', how='inner')
-        #st.info(f"Após INNER JOIN com Reward: {before_count} -> {len(df_base)} registros")
         
         if len(df_base) == 0:
             st.error("INNER JOIN com Reward resultou em DataFrame vazio")
@@ -286,7 +285,6 @@ def fazer_merge_campanhas_corrigido(df_campaign_user, df_campaign, df_reward, df
         before_count = len(df_base)
         df_base = pd.merge(df_base, df_product[['Product ID', 'Product Points', 'Name', 'Type']], 
                           on='Product ID', how='inner', suffixes=('', '_product'))
-        #st.info(f"Após INNER JOIN com Product: {before_count} -> {len(df_base)} registros")
         
         if len(df_base) == 0:
             st.error("INNER JOIN com Product resultou em DataFrame vazio")
@@ -303,7 +301,6 @@ def fazer_merge_campanhas_corrigido(df_campaign_user, df_campaign, df_reward, df
     if 'Partner ID' in df_base.columns and 'Partner ID' in df_partner.columns:
         before_count = len(df_base)
         df_base = pd.merge(df_base, df_partner, on='Partner ID', how='left')
-        #st.info(f"Após LEFT JOIN com Partner: {before_count} -> {len(df_base)} registros")
     
     # PASSO 6: LEFT JOIN com User para obter dados demográficos (secundário)
     if 'User ID' in df_base.columns and 'User ID' in df_user.columns:
@@ -315,7 +312,6 @@ def fazer_merge_campanhas_corrigido(df_campaign_user, df_campaign, df_reward, df
         # Verificar se Email já existe para evitar duplicação
         suffixes = ('', '_user') if 'Email' in df_base.columns else ('', '')
         df_base = pd.merge(df_base, df_user[user_cols], on='User ID', how='left', suffixes=suffixes)
-        #st.info(f"Após LEFT JOIN com User: {before_count} -> {len(df_base)} registros")
     
     # PASSO 7: Adicionar colunas de data processadas
     if 'Campaign User Created At' in df_base.columns:
@@ -1161,5 +1157,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
