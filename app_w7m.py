@@ -730,7 +730,7 @@ def criar_grafico_unidades_resgatadas_item(df_rewards):
     if not nome_col:
         return None
     
-    unidades_por_item = df_rewards[nome_col].value_counts().head(10)
+    unidades_por_item = df_rewards[nome_col].value_counts()#.head(10)
     
     if len(unidades_por_item) == 0:
         return None
@@ -1159,6 +1159,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
