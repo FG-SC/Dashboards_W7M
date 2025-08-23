@@ -325,7 +325,6 @@ def fazer_merge_campanhas_corrigido(df_campaign_user, df_campaign, df_reward, df
     # Verificar se temos pontos válidos
     if 'Product Points' in df_base.columns:
         total_pontos = df_base['Product Points'].sum()
-        st.success(f"DataFrame de campanhas criado com {len(df_base)} registros e {total_pontos:,.0f} pontos totais")
     else:
         st.error("Coluna Product Points não encontrada no resultado final")
     
@@ -509,7 +508,7 @@ def criar_grafico_novos_usuarios_por_semana(df_boosts):
         usuarios_por_semana,
         x='semana_str',
         y='User ID',
-        title='Usuários Únicos com Novas Assinaturas por Semana W7M (Último Mês)',
+        title='Usuários semanais Únicos com Novas Assinaturas (Último Mês)',
         labels={'semana_str': 'Semana', 'User ID': 'Usuários Únicos'},
         color='User ID',
         color_continuous_scale='viridis'
@@ -537,7 +536,7 @@ def criar_grafico_total_assinaturas_por_boost(df_boosts):
     fig = px.bar(
         x=assinaturas_por_boost.index,
         y=assinaturas_por_boost.values,
-        title='Total de Assinaturas por Tipo de Boost W7M',
+        title='Total de Assinaturas por Tipo de Boost',
         labels={'x': 'Tipo de Boost', 'y': 'Total de Assinaturas'},
         color=assinaturas_por_boost.values,
         color_continuous_scale='viridis'
@@ -562,7 +561,7 @@ def criar_grafico_campanhas_pontos_tempo(df_campanhas):
         pontos_semanais,
         x='semana_str',
         y='Product Points',
-        title='Pontos de Missões W7M Gerados ao Longo do Tempo',
+        title='Pontos de Missões Gerados ao Longo do Tempo',
         labels={'semana_str': 'Semana', 'Product Points': 'Pontos de Missões'},
         markers=True
     )
@@ -585,7 +584,7 @@ def criar_grafico_top5_campanhas_engajamento(df_campanhas):
     fig = px.bar(
         x=campanhas_count.index,
         y=campanhas_count.values,
-        title='Top 5 Campanhas W7M por Engajamento',
+        title='Top 5 Campanhas por Engajamento',
         labels={'x': 'Campanha', 'y': 'Número de Participações'},
         color=campanhas_count.values,
         color_continuous_scale='viridis'
@@ -674,7 +673,7 @@ def criar_grafico_top10_usuarios_product_points(df_campanhas):
     fig = px.bar(
         x=pontos_por_usuario.index,
         y=pontos_por_usuario.values,
-        title='Top 10 Usuários por Pontos de Missões W7M',
+        title='Top 10 Usuários por Pontos de Missões',
         labels={'x': 'Usuário', 'y': 'Product Points Total'},
     )
     
@@ -710,7 +709,7 @@ def criar_grafico_pontos_resgatados_item(df_rewards):
     fig = px.bar(
         x=pontos_por_item.index,
         y=pontos_por_item.values,
-        title='Total de Pontos Resgatados por Item W7M',
+        title='Total de Pontos Resgatados por Item',
         labels={'x': 'Item', 'y': 'Total de Pontos'},
         color=pontos_por_item.values,
         color_continuous_scale='viridis'
@@ -739,7 +738,7 @@ def criar_grafico_unidades_resgatadas_item(df_rewards):
     fig = px.bar(
         x=unidades_por_item.index,
         y=unidades_por_item.values,
-        title='Total de Unidades Resgatadas por Item W7M',
+        title='Total de Unidades Resgatadas por Item',
         labels={'x': 'Item', 'y': 'Quantidade Resgatada'},
         color=unidades_por_item.values,
         color_continuous_scale='viridis'
@@ -766,7 +765,7 @@ def criar_grafico_participacoes_tempo(df_campanhas):
         participacoes_diarias,
         x='data_participacao',
         y='participacoes',
-        title='Participações em Campanhas W7M ao Longo do Tempo',
+        title='Participações em Campanhas ao Longo do Tempo',
         labels={'data_participacao': 'Data', 'participacoes': 'Número de Participações'}
     )
     
@@ -798,7 +797,7 @@ def criar_grafico_engajamento_dia_semana(df_campanhas):
         fig = px.bar(
             x=participacoes_por_dia.index,
             y=participacoes_por_dia.values,
-            title='Engajamento em Campanhas W7M por Dia da Semana',
+            title='Engajamento em Campanhas por Dia da Semana',
             labels={'x': 'Dia da Semana', 'y': 'Número de Participações'},
             color=participacoes_por_dia.values,
             color_continuous_scale='viridis'
@@ -824,7 +823,7 @@ def criar_grafico_engajamento_por_hora(df_campanhas):
         fig = px.bar(
             x=participacoes_por_hora.index,
             y=participacoes_por_hora.values,
-            title='Engajamento em Campanhas W7M por Hora do Dia',
+            title='Engajamento em Campanhas por Hora do Dia',
             labels={'x': 'Hora do Dia (0-23)', 'y': 'Número de Participações'},
             color=participacoes_por_hora.values,
             color_continuous_scale='viridis'
@@ -942,7 +941,7 @@ def main():
                 st.info("Dados de boosts não disponíveis")
         
         # Visualização dos dados
-        with st.expander("Visualizar Dados Brutos de Campanhas da W7M"):
+        with st.expander("Visualizar Dados Brutos de Campanhas"):
             st.dataframe(df_campanhas_w7m)
     
     # ==================== ANÁLISE DE USUÁRIO W7M APRIMORADA ====================
@@ -1005,7 +1004,7 @@ def main():
         else:
             st.info("Dados do top usuário não disponíveis para W7M")
         
-        with st.expander("Visualizar Dados Brutos de Campanhas da W7M"):
+        with st.expander("Visualizar Dados Brutos de Campanhas"):
             st.dataframe(df_campanhas_w7m)
     
     # ==================== ANÁLISE DE REWARDS W7M ====================
@@ -1077,6 +1076,7 @@ def main():
                 df_com_email = df_com_email.drop_duplicates(subset=['Transaction ID'])
             
             # Criar resumo por usuário e produto
+            st.write(df_com_email)
             if 'Name' in df_com_email.columns and 'Username' in df_com_email.columns and email_col in df_com_email.columns:
                 resumo_resgates = df_com_email.groupby(['Username', email_col, 'Name']).size().reset_index(name='Quantidade')
                 st.dataframe(resumo_resgates)
@@ -1085,7 +1085,7 @@ def main():
         else:
             st.info("Não há dados de resgate para exibir.")
         
-        with st.expander("Visualizar Dados Brutos de Rewards da W7M"):
+        with st.expander("Visualizar Dados Brutos de Rewards"):
             st.dataframe(df_rewards_w7m)
     
     # ==================== ANÁLISE DE BOOSTS W7M ====================
@@ -1104,7 +1104,7 @@ def main():
             usuarios_unicos = df_boosts_w7m['User ID'].nunique() if 'User ID' in df_boosts_w7m.columns else 0
             st.metric("👥 Usuários Únicos W7M", f"{usuarios_unicos:,}")
         
-        with st.expander("Visualizar Dados Brutos de Boosts da W7M"):
+        with st.expander("Visualizar Dados Brutos de Boosts"):
             st.dataframe(df_boosts_w7m)
     
     # ==================== ANÁLISE DE CAMPANHAS W7M ====================
@@ -1152,11 +1152,12 @@ def main():
             else:
                 st.info("Dados de engajamento por hora não disponíveis")
         
-        with st.expander("Visualizar Dados Brutos de Campanhas da W7M"):
+        with st.expander("Visualizar Dados Brutos de Campanhas"):
             st.dataframe(df_campanhas_w7m)
 
 if __name__ == "__main__":
     main()
+
 
 
 
